@@ -3,7 +3,7 @@
 // Location tracked every 2 min even with screen off
 
 const CACHE_NAME = 'vw-field-v6';
-const APP_SHELL = ['/', '/field-manifest.json'];
+const APP_SHELL = ['/field.html', '/field-manifest.json'];
 const PING_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
 let trackingTimer = null;
@@ -106,7 +106,7 @@ async function showTrackingNotification(visits, km, name) {
       { action: 'open', title: 'Open App' },
       { action: 'stop', title: 'Punch Out' }
     ],
-    data: { url: '/' }
+    data: { url: '/field.html' }
   };
   await self.registration.showNotification('🟢 V Wholesale Field — Tracking Active', opts);
 }
@@ -128,7 +128,7 @@ self.addEventListener('notificationclick', e => {
     e.waitUntil(
       self.clients.matchAll({ type: 'window' }).then(clients => {
         if (clients.length > 0) { clients[0].focus(); return; }
-        return self.clients.openWindow('/');
+        return self.clients.openWindow('/field.html');
       })
     );
   }

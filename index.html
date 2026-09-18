@@ -552,19 +552,49 @@ input[type=file] { display: none; }
   <div class="body hidden" id="tab-map" style="padding-bottom: calc(var(--nav-h) + 16px);">
     <div class="pad">
       <div class="section-header">
-        <div class="section-title">Live field map</div>
-        <div class="live-dot"></div>
-      </div>
-      <div class="map-container" id="live-map-container">
-        <div class="map-placeholder">
-          <div style="font-size:32px;">🗺️</div>
-          <div>Map loading…</div>
-          <div style="font-size:11px;">Showing today's route & site pins</div>
+        <div class="section-title">Today's route</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="live-dot"></span>
+          <span style="font-size:12px;color:var(--text2);" id="map-last-ping">—</span>
         </div>
       </div>
-      <div class="card mt-12">
-        <div class="section-title" style="margin-bottom:10px;">Today's route</div>
-        <div id="route-summary" style="color:var(--text3);font-size:13px;">No location data yet</div>
+
+      <!-- Quick stats -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+        <div class="card" style="padding:10px;text-align:center;margin-bottom:0;">
+          <div class="mono" style="font-size:18px;font-weight:700;color:var(--accent);" id="map-pings">—</div>
+          <div style="font-size:11px;color:var(--text3);">pings</div>
+        </div>
+        <div class="card" style="padding:10px;text-align:center;margin-bottom:0;">
+          <div class="mono" style="font-size:18px;font-weight:700;" id="map-km">—</div>
+          <div style="font-size:11px;color:var(--text3);">km</div>
+        </div>
+        <div class="card" style="padding:10px;text-align:center;margin-bottom:0;">
+          <div class="mono" style="font-size:18px;font-weight:700;color:var(--success);" id="map-sites">—</div>
+          <div style="font-size:11px;color:var(--text3);">sites</div>
+        </div>
+      </div>
+
+      <!-- Map -->
+      <div style="height:340px;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--surface2);position:relative;" id="live-map-container">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text3);" id="map-loading-msg">
+          <div style="font-size:32px;">🗺️</div>
+          <div style="font-size:13px;">Loading today's route…</div>
+        </div>
+        <div id="live-map-actual" style="width:100%;height:100%;"></div>
+      </div>
+
+      <!-- Open in Google Maps -->
+      <button id="btn-open-gmaps" onclick="openRouteInGMaps()" class="btn btn-secondary mt-12" style="display:none;">
+        📍 Open full route in Google Maps
+      </button>
+
+      <!-- Today's site pins list -->
+      <div class="section-header mt-16">
+        <div class="section-title">Sites visited</div>
+      </div>
+      <div id="map-sites-list" style="color:var(--text3);font-size:13px;text-align:center;padding:16px 0;">
+        Loading…
       </div>
     </div>
   </div>
@@ -2057,6 +2087,10 @@ async function showVisitDetail(id) {
     ${v.ai_analysis ? renderAICard(v) : ''}
     <button class="btn btn-secondary mt-16" onclick="openFollowupVisit(${v.id})">Log Follow-up Visit</button>
     <button class="btn btn-primary mt-8" onclick="shareOnWhatsApp(${v.id})">📲 Share on WhatsApp</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+      <button class="btn btn-secondary" onclick="requestCatalog(${v.id}, '${(v.site_contacts?.[0]?.phone||'').replace(/'/g,'')}')" style="font-size:13px;">📚 Request Catalog</button>
+      <button class="btn btn-secondary" onclick="requestQuotation(${v.id}, '${(v.site_contacts?.[0]?.phone||'').replace(/'/g,'')}')" style="font-size:13px;">📋 Request Quote</button>
+    </div>
   `;
   openSheet('sheet-visit-detail');
 }
@@ -3232,6 +3266,62 @@ async function getFuelRate() {
   return data?.fuel_rate_per_km || 2.5;
 }
 
+async function requestCatalog(visitId, contactPhone) {
+  if (!currentUser) return;
+  const phone = contactPhone || prompt('Enter customer WhatsApp number:');
+  if (!phone) return;
+
+  // Create task for backend team
+  await sb.from('tasks').insert({
+    type: 'field_catalog_request',
+    department: 'Sales',
+    title: 'Catalog Request — Field Visit',
+    description: `Field rep ${currentUser.name} requests catalog for customer at visit #${visitId}. Send to WhatsApp: +91${phone}`,
+    status: 'open',
+    priority: 'normal',
+    created_by: currentUser.name,
+    notes: `Visit ID: ${visitId} | Customer phone: ${phone}`,
+    follow_up_date: new Date().toISOString().split('T')[0]
+  });
+
+  showToast('✅ Catalog request sent to backend team');
+  closeSheet('sheet-visit-detail');
+}
+
+async function requestQuotation(visitId, contactPhone) {
+  if (!currentUser) return;
+  const { data: visit } = await sb.from('field_visits').select('*').eq('id', visitId).single();
+  if (!visit) return;
+
+  const phone = contactPhone || prompt('Enter customer WhatsApp number:');
+  if (!phone) return;
+
+  const requirements = visit.ai_requirements?.join(', ') || visit.customer_requirements || 'See visit notes';
+  const sqft = visit.estimated_sqft ? `${visit.estimated_sqft} sqft` : 'unknown area';
+
+  // Create quotation task for backend
+  await sb.from('tasks').insert({
+    type: 'field_quotation_request',
+    department: 'Sales',
+    title: `Quotation Request — ${visit.site_address || 'Site Visit'}`,
+    description: `Field rep ${currentUser.name} requests quotation for:
+Site: ${visit.site_address}
+Stage: ${visit.construction_stage}
+Area: ${sqft}
+Requirements: ${requirements}
+Customer WhatsApp: +91${phone}
+Send quotation to customer's WhatsApp.`,
+    status: 'open',
+    priority: 'high',
+    created_by: currentUser.name,
+    notes: `Visit ID: ${visitId} | Stage: ${visit.construction_stage} | Sqft: ${sqft}`,
+    follow_up_date: new Date().toISOString().split('T')[0]
+  });
+
+  showToast('✅ Quotation request sent to sales team');
+  closeSheet('sheet-visit-detail');
+}
+
 function shareOnWhatsApp(visitId) {
   const url = `https://wa.me/?text=${encodeURIComponent(`V Wholesale Field Visit Report — ${currentUser.name}\nDate: ${new Date().toLocaleDateString('en-IN')}\nFor more details contact your V Wholesale representative.`)}`;
   window.open(url, '_blank');
@@ -3265,6 +3355,7 @@ function showTab(tab) {
     document.querySelector(`.nav-item[data-tab="${t}"]`)?.classList.toggle('active', t === tab);
   });
   if (tab === 'team') loadTeamData();
+  if (tab === 'map') loadMapTab();
 }
 
 function openSheet(id) { document.getElementById(id).classList.add('open'); }
@@ -3301,6 +3392,105 @@ window.addEventListener('unhandledrejection', e => {
     e.preventDefault();
   }
 });
+
+async function loadMapTab() {
+  const today = new Date().toISOString().split('T')[0];
+
+  // Get today's location pings
+  const { data: pings } = await sb.from('field_location_log')
+    .select('lat,lng,recorded_at,is_moving')
+    .eq('staff_id', currentUser.id)
+    .gte('recorded_at', today + 'T00:00:00')
+    .order('recorded_at', { ascending: true });
+
+  // Get today's visits
+  const { data: visits } = await sb.from('field_visits')
+    .select('id,site_address,site_lat,site_lng,construction_stage,created_at')
+    .eq('staff_id', currentUser.id)
+    .gte('created_at', today + 'T00:00:00')
+    .order('created_at', { ascending: true });
+
+  const pingCount = pings?.length || 0;
+  const visitCount = visits?.length || 0;
+
+  document.getElementById('map-pings').textContent = pingCount;
+  document.getElementById('map-sites').textContent = visitCount;
+
+  if (pings?.length) {
+    const last = pings[pings.length - 1];
+    const ago = Math.round((Date.now() - new Date(last.recorded_at)) / 60000);
+    document.getElementById('map-last-ping').textContent = ago + 'm ago';
+
+    // Estimate km from pings (rough haversine sum)
+    let totalKm = 0;
+    for (let i = 1; i < pings.length; i++) {
+      totalKm += haversineKm(pings[i-1].lat, pings[i-1].lng, pings[i].lat, pings[i].lng);
+    }
+    document.getElementById('map-km').textContent = totalKm.toFixed(1);
+
+    // Build Google Maps route link
+    if (pings.length >= 2) {
+      const origin = `${pings[0].lat},${pings[0].lng}`;
+      const dest = `${last.lat},${last.lng}`;
+      const waypoints = pings.filter((_,i) => i > 0 && i < pings.length - 1 && i % 5 === 0)
+        .map(p => `${p.lat},${p.lng}`).join('|');
+      window._gmapsRouteUrl = `https://www.google.com/maps/dir/${origin}/${dest}`;
+      document.getElementById('btn-open-gmaps').style.display = '';
+    }
+  } else {
+    document.getElementById('map-km').textContent = '0';
+    document.getElementById('map-last-ping').textContent = 'No signal';
+  }
+
+  // Render sites list
+  const sitesEl = document.getElementById('map-sites-list');
+  if (!visits?.length) {
+    sitesEl.textContent = 'No sites visited today';
+  } else {
+    sitesEl.innerHTML = visits.map(v => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border2);">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-soft);border:1px solid var(--accent);
+             display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">📍</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${v.site_address || 'Site Visit'}
+          </div>
+          <div style="font-size:11px;color:var(--text3);">
+            ${stageLabel(v.construction_stage)} · ${new Date(v.created_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}
+          </div>
+        </div>
+        ${v.site_lat ? `<a href="https://www.google.com/maps?q=${v.site_lat},${v.site_lng}" target="_blank" 
+          style="font-size:11px;color:var(--accent);text-decoration:none;white-space:nowrap;">Open ↗</a>` : ''}
+      </div>`).join('');
+  }
+
+  // Show map loading done
+  document.getElementById('map-loading-msg').style.display = 'none';
+  document.getElementById('live-map-actual').innerHTML = pings?.length
+    ? `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--text2);">
+        <div style="font-size:36px;">🗺️</div>
+        <div style="font-size:14px;font-weight:600;">${pingCount} location pings today</div>
+        <div style="font-size:12px;color:var(--text3);">Open in Google Maps to see full route</div>
+        <a href="${window._gmapsRouteUrl||'#'}" target="_blank" style="margin-top:8px;padding:10px 20px;background:var(--accent);color:var(--base);border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;">View Route →</a>
+      </div>`
+    : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:var(--text3);">
+        <div style="font-size:32px;">📍</div>
+        <div>No route data yet today</div>
+        <div style="font-size:12px;">Punch in to start tracking</div>
+      </div>`;
+}
+
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function openRouteInGMaps() {
+  if (window._gmapsRouteUrl) window.open(window._gmapsRouteUrl, '_blank');
+}
 
 function initClockTick() {
   const update = () => {
