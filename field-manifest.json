@@ -1,0 +1,26 @@
+{
+  "name": "V Wholesale Field",
+  "short_name": "VW Field",
+  "description": "V Wholesale Field Team App — Site visits, attendance, tracking",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0F1923",
+  "theme_color": "#0F1923",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/icons/field-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/field-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Log Site Visit",
+      "short_name": "New Visit",
+      "description": "Log a new site visit",
+      "url": "/field.html#visit",
+      "icons": [{ "src": "/icons/field-icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

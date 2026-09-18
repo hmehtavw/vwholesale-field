@@ -1,0 +1,3423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0F1923">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VW Field">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>V Wholesale Field</title>
+<link rel="manifest" href="/field-manifest.json">
+<link rel="canonical" href="https://field.vwholesale.in/">
+<link rel="apple-touch-icon" href="/icons/field-icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyPlaceholderKeyReplaceMe&libraries=places&callback=initMapLib" async defer></script>
+
+<style>
+:root {
+  --base: #0F1923;
+  --surface: #1A2634;
+  --surface2: #243040;
+  --accent: #F5A623;
+  --accent-soft: rgba(245,166,35,0.12);
+  --accent-dim: #C4841A;
+  --success: #22C55E;
+  --success-soft: rgba(34,197,94,0.12);
+  --danger: #EF4444;
+  --danger-soft: rgba(239,68,68,0.12);
+  --warning: #F59E0B;
+  --text: #F0F4F8;
+  --text2: #8FA3B8;
+  --text3: #506070;
+  --border: #2A3A4A;
+  --border2: #1E2E3E;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --nav-h: 68px;
+  --header-h: 60px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--base); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; font-size: 15px; line-height: 1.5; overflow: hidden; }
+
+/* ── SCREENS ── */
+.screen { position: fixed; inset: 0; display: none; flex-direction: column; background: var(--base); }
+.screen.active { display: flex; }
+
+/* ── HEADER ── */
+.header {
+  height: var(--header-h); min-height: var(--header-h);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 18px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: relative; z-index: 10;
+}
+.header-logo { display: flex; align-items: center; gap: 10px; }
+.header-logo-mark {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: var(--accent); display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; color: var(--base); letter-spacing: -0.5px;
+}
+.header-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.header-sub { font-size: 12px; color: var(--text2); }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.icon-btn {
+  width: 38px; height: 38px; border-radius: 10px; border: none;
+  background: var(--surface2); color: var(--text); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+
+/* ── SCROLL BODY ── */
+.body { flex: 1; overflow-y: auto; padding: calc(var(--nav-h) + 0px) 0 0; }
+.body.no-nav { padding-bottom: 0; }
+.pad { padding: 16px; }
+
+/* ── BOTTOM NAV ── */
+.nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: stretch;
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; cursor: pointer;
+  border: none; background: none; color: var(--text3);
+  font-size: 11px; font-weight: 500; transition: color .15s;
+  padding: 8px 0;
+}
+.nav-item.active { color: var(--accent); }
+.nav-item svg { width: 22px; height: 22px; }
+.nav-badge {
+  position: absolute; top: 6px; right: calc(50% - 16px);
+  background: var(--danger); color: #fff; border-radius: 10px;
+  font-size: 10px; font-weight: 700; padding: 1px 5px; min-width: 16px; text-align: center;
+}
+.nav-center-wrap { position: relative; flex: 1; display: flex; justify-content: center; align-items: center; }
+.nav-center-btn {
+  width: 54px; height: 54px; border-radius: 50%; border: 3px solid var(--base);
+  background: var(--accent); color: var(--base); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 26px;
+  margin-bottom: 6px; box-shadow: 0 4px 16px rgba(245,166,35,.4);
+}
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+}
+.card-accent { border-left: 3px solid var(--accent); }
+.card-success { border-left: 3px solid var(--success); }
+.card-danger { border-left: 3px solid var(--danger); }
+
+/* ── STAT TILES ── */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.stat-tile {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 14px 12px;
+}
+.stat-value {
+  font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700;
+  color: var(--accent); line-height: 1.1;
+}
+.stat-label { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.stat-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* ── PROGRESS BAR ── */
+.progress-wrap { margin: 4px 0 0; }
+.progress-bar {
+  height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s; }
+.progress-fill.success { background: var(--success); }
+
+/* ── PUNCH CARD ── */
+.punch-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px; margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.punch-info .punch-status { font-size: 13px; color: var(--text2); }
+.punch-info .punch-time { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text); margin-top: 2px; }
+.punch-info .punch-loc { font-size: 12px; color: var(--text3); margin-top: 3px; }
+.punch-btn {
+  padding: 12px 20px; border-radius: 10px; border: none;
+  font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.punch-btn.in { background: var(--accent); color: var(--base); }
+.punch-btn.out { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger); }
+
+/* ── VISIT PILL LIST ── */
+.visit-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px;
+  display: flex; align-items: flex-start; gap: 12px; cursor: pointer;
+  transition: border-color .15s;
+}
+.visit-item:active { border-color: var(--accent); }
+.visit-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); margin-top: 5px; flex-shrink: 0; }
+.visit-dot.pending { background: var(--warning); }
+.visit-dot.assigned { background: var(--text3); }
+.visit-info { flex: 1; min-width: 0; }
+.visit-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.visit-addr { font-size: 12px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.visit-meta { font-size: 11px; color: var(--text3); margin-top: 4px; display: flex; gap: 8px; }
+.visit-stage { font-size: 11px; padding: 2px 7px; border-radius: 20px; background: var(--accent-soft); color: var(--accent); font-weight: 500; flex-shrink: 0; }
+
+/* ── FORMS ── */
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.05em; }
+.form-label .req { color: var(--danger); margin-left: 2px; }
+.form-input, .form-select, .form-textarea {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); border-radius: var(--radius-sm); padding: 12px 14px;
+  font-size: 15px; font-family: inherit; outline: none;
+  transition: border-color .15s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+.form-select { appearance: none; }
+.form-textarea { min-height: 80px; resize: vertical; }
+.form-input::placeholder, .form-textarea::placeholder { color: var(--text3); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 20px; border-radius: var(--radius); border: none;
+  font-size: 15px; font-weight: 600; cursor: pointer; width: 100%;
+  transition: opacity .15s; font-family: inherit;
+}
+.btn:active { opacity: 0.8; }
+.btn-primary { background: var(--accent); color: var(--base); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-danger { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-sm { padding: 9px 16px; font-size: 13px; border-radius: 8px; }
+.btn-ghost { background: transparent; color: var(--text2); }
+.btn[disabled] { opacity: 0.4; pointer-events: none; }
+.btn-row { display: flex; gap: 10px; }
+.btn-row .btn { flex: 1; }
+
+/* ── PHOTO CAPTURE ── */
+.photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.photo-slot {
+  aspect-ratio: 1; border-radius: var(--radius-sm); border: 1px dashed var(--border);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; cursor: pointer; background: var(--surface2); overflow: hidden;
+  position: relative;
+}
+.photo-slot img { width: 100%; height: 100%; object-fit: cover; }
+.photo-slot .photo-label { font-size: 10px; color: var(--text3); text-align: center; padding: 0 4px; }
+.photo-slot .photo-icon { font-size: 20px; }
+.photo-slot.filled .photo-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,.4);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .2s;
+}
+.photo-slot.filled:hover .photo-overlay { opacity: 1; }
+.photo-del { font-size: 20px; cursor: pointer; }
+input[type=file] { display: none; }
+
+/* ── MAP CONTAINER ── */
+.map-container {
+  height: 200px; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border); background: var(--surface2);
+  position: relative;
+}
+.map-placeholder {
+  height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+  color: var(--text3); font-size: 13px;
+}
+.map-pin-info {
+  margin-top: 8px; padding: 10px 12px; background: var(--surface2);
+  border-radius: var(--radius-sm); font-size: 12px; color: var(--text2);
+}
+
+/* ── CONTACT ROWS ── */
+.contact-row {
+  background: var(--surface2); border-radius: var(--radius-sm);
+  padding: 12px; margin-bottom: 8px; position: relative;
+}
+.contact-role-tag {
+  font-size: 10px; font-weight: 600; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;
+}
+.contact-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.contact-del {
+  position: absolute; top: 10px; right: 10px;
+  background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px;
+}
+.add-contact-btn {
+  display: flex; align-items: center; gap: 6px; padding: 10px;
+  background: var(--accent-soft); border: 1px dashed var(--accent);
+  border-radius: var(--radius-sm); cursor: pointer; color: var(--accent);
+  font-size: 13px; font-weight: 600; width: 100%; justify-content: center;
+}
+
+/* ── CHIP SELECTOR ── */
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border); background: var(--surface2); color: var(--text2);
+  cursor: pointer; transition: all .15s;
+}
+.chip.selected { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* ── ALERT BANNER ── */
+.alert-banner {
+  padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 12px;
+  font-size: 13px; display: flex; align-items: flex-start; gap: 10px;
+}
+.alert-banner.warn { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.3); color: #FBBF24; }
+.alert-banner.info { background: var(--accent-soft); border: 1px solid rgba(245,166,35,.3); color: var(--accent); }
+.alert-banner.success { background: var(--success-soft); border: 1px solid rgba(34,197,94,.3); color: var(--success); }
+
+/* ── AI ANALYSIS ── */
+.ai-card {
+  background: linear-gradient(135deg, rgba(245,166,35,.08), rgba(34,197,94,.05));
+  border: 1px solid rgba(245,166,35,.25); border-radius: var(--radius); padding: 16px;
+  margin-top: 16px;
+}
+.ai-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.ai-badge { font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: 0.08em; }
+.ai-req-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.ai-req-chip {
+  padding: 4px 10px; border-radius: 20px;
+  background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 500;
+}
+.ai-value-range {
+  font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700;
+  color: var(--success);
+}
+
+/* ── LOGIN SCREEN ── */
+#screen-login {
+  background: var(--base);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 32px 24px;
+}
+.login-logo {
+  width: 72px; height: 72px; border-radius: 20px; background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 800; color: var(--base); margin-bottom: 32px;
+  letter-spacing: -1px;
+}
+.login-headline { font-size: 24px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+.login-sub { font-size: 14px; color: var(--text2); text-align: center; margin-bottom: 40px; }
+.login-form { width: 100%; max-width: 360px; }
+.phone-input-wrap { display: flex; align-items: center; gap: 0; margin-bottom: 12px; }
+.phone-prefix {
+  background: var(--surface2); border: 1px solid var(--border); border-right: none;
+  padding: 12px 14px; border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  color: var(--text2); font-size: 15px; white-space: nowrap;
+}
+.phone-input-wrap .form-input {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.otp-wrap { display: flex; gap: 8px; justify-content: center; margin: 16px 0; }
+.otp-digit {
+  width: 46px; height: 56px; text-align: center; font-size: 24px; font-weight: 700;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); font-family: 'JetBrains Mono', monospace; outline: none;
+}
+.otp-digit:focus { border-color: var(--accent); }
+
+/* ── SECTION HEADER ── */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.section-title { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+.section-action { font-size: 13px; color: var(--accent); font-weight: 600; cursor: pointer; }
+
+/* ── MODAL SHEET ── */
+.sheet-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200;
+  display: none; align-items: flex-end;
+}
+.sheet-backdrop.open { display: flex; }
+.sheet {
+  background: var(--surface); border-radius: 20px 20px 0 0;
+  width: 100%; max-height: 92vh; overflow-y: auto;
+  padding: 0 0 env(safe-area-inset-bottom);
+}
+.sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 12px auto 0; }
+.sheet-header { padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border2); }
+.sheet-title { font-size: 17px; font-weight: 700; }
+.sheet-close { font-size: 22px; color: var(--text3); cursor: pointer; background: none; border: none; color: var(--text2); }
+.sheet-body { padding: 20px; }
+
+/* ── LIVE INDICATOR ── */
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+
+/* ── SKELETON ── */
+.skeleton { background: var(--surface2); border-radius: 6px; animation: shimmer 1.4s infinite; }
+@keyframes shimmer { 0%,100% { opacity:.6; } 50% { opacity:1; } }
+
+/* ── DIVIDER ── */
+.divider { height: 1px; background: var(--border2); margin: 16px 0; }
+
+/* ── MISC ── */
+.text-accent { color: var(--accent); }
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+.text-muted { color: var(--text2); }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.fw-700 { font-weight: 700; }
+.hidden { display: none !important; }
+.center { text-align: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════════ -->
+<div class="screen active" id="screen-login">
+  <div class="login-logo">VW</div>
+  <h1 class="login-headline">V Wholesale Field</h1>
+  <p class="login-sub">Sign in with your registered mobile number</p>
+
+  <div class="login-form" id="login-phone-step">
+    <div class="form-group">
+      <div class="phone-input-wrap">
+        <div class="phone-prefix">+91</div>
+        <input class="form-input" id="input-phone" type="tel" inputmode="numeric"
+               maxlength="10" placeholder="10-digit mobile number" autocomplete="tel">
+      </div>
+    </div>
+    <button class="btn btn-primary" id="btn-send-otp">Send OTP</button>
+    <p class="center mt-12" style="font-size:12px;color:var(--text3);">
+      Only registered field staff can sign in
+    </p>
+  </div>
+
+  <div class="login-form hidden" id="login-otp-step">
+    <p class="center text-muted" style="margin-bottom:16px;font-size:14px;" id="otp-sent-msg"></p>
+    <div class="otp-wrap" id="otp-wrap">
+      <input class="otp-digit" type="text" inputmode="numeric" maxlength="1">
+      <input class="otp-digit" type="text" inputmode="numeric" maxlength="1">
+      <input class="otp-digit" type="text" inputmode="numeric" maxlength="1">
+      <input class="otp-digit" type="text" inputmode="numeric" maxlength="1">
+      <input class="otp-digit" type="text" inputmode="numeric" maxlength="1">
+      <input class="otp-digit" type="text" inputmode="numeric" maxlength="1">
+    </div>
+    <button class="btn btn-primary mt-12" id="btn-verify-otp">Verify & Sign In</button>
+    <button class="btn btn-ghost mt-8" id="btn-resend-otp">Resend OTP</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MAIN APP WRAPPER (shown after login)
+═══════════════════════════════════════════════ -->
+<div class="screen" id="screen-app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-logo">
+      <div class="header-logo-mark">VW</div>
+      <div>
+        <div class="header-title" id="hdr-name">Field App</div>
+        <div class="header-sub" id="hdr-role">—</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div style="font-size:12px;color:var(--text2);text-align:right;">
+        <span class="live-dot"></span>
+        <span id="hdr-time">—</span>
+      </div>
+      <button class="icon-btn" id="btn-profile-icon">👤</button>
+    </div>
+  </div>
+
+  <!-- TAB CONTENTS -->
+  <div class="body" id="tab-home" style="padding-bottom: calc(var(--nav-h) + 16px);">
+    <div class="pad">
+
+      <!-- Punch status -->
+      <div class="punch-card" id="punch-card">
+        <div class="punch-info">
+          <div class="punch-status" id="punch-label">Not punched in</div>
+          <div class="punch-time" id="punch-time">--:--</div>
+          <div class="punch-loc" id="punch-loc">Tap to start your day</div>
+        </div>
+        <button class="punch-btn in" id="punch-btn" onclick="openPunchSheet()">Punch In</button>
+      </div>
+
+      <!-- Stats -->
+      <!-- Daily stats -->
+      <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.06em;margin-bottom:8px;">TODAY</div>
+      <div class="stat-grid" style="margin-bottom:14px;">
+        <div class="stat-tile">
+          <div class="stat-value" id="stat-visits">0</div>
+          <div class="stat-label">Visits today</div>
+          <div class="progress-wrap">
+            <div class="progress-bar"><div class="progress-fill" id="visits-bar" style="width:0%"></div></div>
+          </div>
+          <div class="stat-sub" id="stat-target">Target: 15</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-value" id="stat-km">0</div>
+          <div class="stat-label">km today</div>
+          <div class="stat-sub" id="stat-km-fuel">₹0 fuel</div>
+        </div>
+      </div>
+
+      <!-- Monthly cycle stats (21st–20th) -->
+      <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.06em;margin-bottom:8px;" id="cycle-label">THIS CYCLE</div>
+      <div class="stat-grid" style="margin-bottom:14px;">
+        <div class="stat-tile">
+          <div class="stat-value" id="stat-cycle-visits">0</div>
+          <div class="stat-label">Cycle visits</div>
+          <div class="stat-sub" id="stat-cycle-days">—</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-value" id="stat-cycle-km">0</div>
+          <div class="stat-label">Cycle km</div>
+          <div class="stat-sub" id="stat-cycle-fuel" style="color:var(--accent);">₹0 fuel due</div>
+        </div>
+        <div class="stat-tile" style="grid-column:span 2;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div class="stat-value" id="stat-billing">0L</div>
+              <div class="stat-label">Billing this cycle</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:11px;color:var(--text2);">Target</div>
+              <div class="mono" style="font-size:16px;font-weight:700;" id="stat-billing-target">₹10L</div>
+            </div>
+          </div>
+          <div class="progress-wrap mt-8">
+            <div class="progress-bar"><div class="progress-fill" id="billing-bar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Incentive tier -->
+      <div class="card card-accent" id="incentive-card">
+        <div class="flex-between">
+          <div>
+            <div style="font-size:12px;color:var(--text2);">This month's tier</div>
+            <div style="font-size:20px;font-weight:700;margin-top:2px;" id="incentive-tier">—</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:12px;color:var(--text2);">Payout</div>
+            <div class="mono" style="font-size:18px;font-weight:700;color:var(--success);" id="incentive-payout">—</div>
+          </div>
+        </div>
+        <div class="progress-wrap mt-8">
+          <div class="progress-bar" style="height:6px;"><div class="progress-fill" id="incentive-bar" style="width:0%"></div></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;" id="incentive-next">Complete more visits to unlock Silver</div>
+      </div>
+
+      <!-- Assigned visits -->
+      <div class="section-header mt-16">
+        <div class="section-title">Assigned to you</div>
+        <div class="section-action" onclick="showTab('visits')">See all</div>
+      </div>
+      <div id="assigned-list">
+        <div style="text-align:center;padding:24px 0;color:var(--text3);font-size:14px;">No assignments today</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- VISITS TAB -->
+  <div class="body hidden" id="tab-visits" style="padding-bottom: calc(var(--nav-h) + 16px);">
+    <div class="pad">
+      <div class="section-header">
+        <div class="section-title">Today's visits</div>
+        <div id="visits-count-badge" style="font-size:13px;color:var(--text2);"></div>
+      </div>
+      <div id="visits-list">
+        <div style="text-align:center;padding:40px 0;color:var(--text3);font-size:14px;">No visits yet today</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP TAB -->
+  <div class="body hidden" id="tab-map" style="padding-bottom: calc(var(--nav-h) + 16px);">
+    <div class="pad">
+      <div class="section-header">
+        <div class="section-title">Live field map</div>
+        <div class="live-dot"></div>
+      </div>
+      <div class="map-container" id="live-map-container">
+        <div class="map-placeholder">
+          <div style="font-size:32px;">🗺️</div>
+          <div>Map loading…</div>
+          <div style="font-size:11px;">Showing today's route & site pins</div>
+        </div>
+      </div>
+      <div class="card mt-12">
+        <div class="section-title" style="margin-bottom:10px;">Today's route</div>
+        <div id="route-summary" style="color:var(--text3);font-size:13px;">No location data yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEAM TAB (visible to TL, ASM, Cluster Head, Region Head) -->
+  <div class="body hidden" id="tab-team" style="padding-bottom: calc(var(--nav-h) + 16px);">
+    <div class="pad">
+      <div class="section-header">
+        <div class="section-title">My Team — Today</div>
+        <div style="font-size:11px;color:var(--text3);" id="team-updated">—</div>
+      </div>
+
+      <!-- Team summary bar -->
+      <div class="card" style="margin-bottom:14px;padding:14px 16px;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;">
+          <div>
+            <div class="mono" style="font-size:22px;font-weight:700;color:var(--accent);" id="team-active">—</div>
+            <div style="font-size:11px;color:var(--text3);">Active now</div>
+          </div>
+          <div>
+            <div class="mono" style="font-size:22px;font-weight:700;" id="team-total-visits">—</div>
+            <div style="font-size:11px;color:var(--text3);">Visits today</div>
+          </div>
+          <div>
+            <div class="mono" style="font-size:22px;font-weight:700;color:var(--success);" id="team-on-target">—</div>
+            <div style="font-size:11px;color:var(--text3);">On target</div>
+          </div>
+          <div>
+            <div class="mono" style="font-size:22px;font-weight:700;color:var(--warning);" id="team-alerts">—</div>
+            <div style="font-size:11px;color:var(--text3);">Alerts</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rep cards -->
+      <div id="team-rep-list">
+        <div style="text-align:center;padding:40px 0;color:var(--text3);">Loading team…</div>
+      </div>
+
+      <!-- Today's visit feed -->
+      <div class="section-header mt-16">
+        <div class="section-title">Recent visits — all reps</div>
+        <div class="section-action" onclick="loadTeamVisits()">Refresh</div>
+      </div>
+      <div id="team-visits-feed">
+        <div style="text-align:center;padding:20px 0;color:var(--text3);font-size:13px;">Loading…</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PROFILE TAB -->
+  <div class="body hidden" id="tab-profile" style="padding-bottom: calc(var(--nav-h) + 16px);">
+    <div class="pad">
+      <div style="text-align:center;padding:24px 0 20px;">
+        <div style="width:72px;height:72px;border-radius:50%;background:var(--surface2);border:2px solid var(--accent);
+             display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px;" id="profile-avatar">👤</div>
+        <div style="font-size:20px;font-weight:700;" id="profile-name">—</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px;" id="profile-desig">—</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;" id="profile-city">—</div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:12px;">Performance</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">
+          <div>
+            <div class="mono" style="font-size:22px;font-weight:700;color:var(--accent);" id="perf-visits">—</div>
+            <div style="font-size:11px;color:var(--text3);">Visits</div>
+          </div>
+          <div>
+            <div class="mono" style="font-size:22px;font-weight:700;color:var(--success);" id="perf-quality">—</div>
+            <div style="font-size:11px;color:var(--text3);">Quality</div>
+          </div>
+          <div>
+            <div class="mono" style="font-size:22px;font-weight:700;" id="perf-tier">—</div>
+            <div style="font-size:11px;color:var(--text3);">Tier</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-12">
+        <div class="section-title" style="margin-bottom:12px;">Fuel this month</div>
+        <div class="flex-between">
+          <div style="font-size:13px;color:var(--text2);">Total km</div>
+          <div class="mono" style="font-weight:700;" id="perf-km">—</div>
+        </div>
+        <div class="divider"></div>
+        <div class="flex-between">
+          <div style="font-size:13px;color:var(--text2);">Reimbursement</div>
+          <div class="mono text-success fw-700" id="perf-fuel">—</div>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary mt-16" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="nav">
+    <button class="nav-item active" data-tab="home" onclick="showTab('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      Home
+    </button>
+    <button class="nav-item" data-tab="visits" onclick="showTab('visits')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+      </svg>
+      Visits
+    </button>
+    <!-- Centre FAB -->
+    <div class="nav-center-wrap">
+      <button class="nav-center-btn" onclick="openNewVisitSheet()" title="Log new visit">＋</button>
+    </div>
+    <button class="nav-item" data-tab="map" onclick="showTab('map')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+        <line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
+      </svg>
+      Map
+    </button>
+    <button class="nav-item" data-tab="team" onclick="showTab('team')" id="nav-team" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+      </svg>
+      Team
+    </button>
+    <button class="nav-item" data-tab="profile" onclick="showTab('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+      Profile
+    </button>
+  </nav>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PUNCH IN/OUT SHEET
+═══════════════════════════════════════════════ -->
+<div class="sheet-backdrop" id="sheet-punch">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title" id="punch-sheet-title">Punch In</div>
+      <button class="sheet-close" onclick="closeSheet('sheet-punch')">✕</button>
+    </div>
+    <div class="sheet-body">
+
+      <div id="punch-in-form">
+        <!-- Selfie -->
+        <div class="form-group">
+          <label class="form-label">Selfie <span class="req">*</span></label>
+          <div class="photo-slot" style="aspect-ratio:4/3;width:100%;border-radius:12px;" onclick="capturePhoto('selfie-capture', 'selfie-preview')">
+            <img id="selfie-preview" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:12px;">
+            <div id="selfie-placeholder">
+              <div class="photo-icon">🤳</div>
+              <div class="photo-label">Tap to take selfie</div>
+            </div>
+            <input type="file" id="selfie-capture" accept="image/*" capture="user" onchange="previewPhoto(this,'selfie-preview','selfie-placeholder')">
+          </div>
+        </div>
+
+        <!-- Odometer In -->
+        <div class="form-group">
+          <label class="form-label">Odometer reading (km) <span class="req">*</span></label>
+          <input class="form-input mono" id="odo-in" type="number" inputmode="numeric" placeholder="e.g. 12450">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Odometer photo <span class="req">*</span></label>
+          <div class="photo-slot" style="aspect-ratio:16/7;width:100%;border-radius:10px;" onclick="capturePhoto('odo-in-capture', 'odo-in-preview')">
+            <img id="odo-in-preview" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:10px;">
+            <div id="odo-in-placeholder">
+              <div class="photo-icon">🏍️</div>
+              <div class="photo-label">Tap to photo odometer</div>
+            </div>
+            <input type="file" id="odo-in-capture" accept="image/*" capture="environment" onchange="previewPhoto(this,'odo-in-preview','odo-in-placeholder')">
+          </div>
+        </div>
+
+        <!-- GPS -->
+        <div class="alert-banner info" id="gps-status-in">
+          <span>📍</span> <span id="gps-status-text-in">Getting your location…</span>
+        </div>
+
+        <button class="btn btn-primary" id="btn-do-punchin" onclick="doPunchIn()">Start Day</button>
+      </div>
+
+      <div id="punch-out-form" class="hidden">
+        <!-- Odometer Out -->
+        <div class="form-group">
+          <label class="form-label">Odometer reading now (km) <span class="req">*</span></label>
+          <input class="form-input mono" id="odo-out" type="number" inputmode="numeric" placeholder="e.g. 12530">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Odometer photo <span class="req">*</span></label>
+          <div class="photo-slot" style="aspect-ratio:16/7;width:100%;border-radius:10px;" onclick="capturePhoto('odo-out-capture', 'odo-out-preview')">
+            <img id="odo-out-preview" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:10px;">
+            <div id="odo-out-placeholder">
+              <div class="photo-icon">🏍️</div>
+              <div class="photo-label">Tap to photo odometer</div>
+            </div>
+            <input type="file" id="odo-out-capture" accept="image/*" capture="environment" onchange="previewPhoto(this,'odo-out-preview','odo-out-placeholder')">
+          </div>
+        </div>
+
+        <div class="card" id="fuel-preview-card" style="display:none;">
+          <div class="flex-between">
+            <span style="color:var(--text2);font-size:13px;">Distance today</span>
+            <span class="mono fw-700" id="fuel-km-calc">— km</span>
+          </div>
+          <div class="flex-between mt-8">
+            <span style="color:var(--text2);font-size:13px;">Fuel reimbursement</span>
+            <span class="mono fw-700 text-success" id="fuel-rs-calc">₹—</span>
+          </div>
+        </div>
+
+        <button class="btn btn-danger mt-12" id="btn-do-punchout" onclick="doPunchOut()">End Day</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     NEW VISIT SHEET
+═══════════════════════════════════════════════ -->
+<div class="sheet-backdrop" id="sheet-visit">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title" id="visit-sheet-title">Log Site Visit</div>
+      <button class="sheet-close" onclick="closeSheet('sheet-visit')">✕</button>
+    </div>
+    <div class="sheet-body" id="visit-form-body">
+
+      <!-- Step indicator -->
+      <div style="display:flex;gap:4px;margin-bottom:20px;" id="visit-steps">
+        <div class="step-dot active" data-step="1" style="flex:1;height:4px;border-radius:2px;background:var(--accent);"></div>
+        <div class="step-dot" data-step="2" style="flex:1;height:4px;border-radius:2px;background:var(--border);"></div>
+        <div class="step-dot" data-step="3" style="flex:1;height:4px;border-radius:2px;background:var(--border);"></div>
+        <div class="step-dot" data-step="4" style="flex:1;height:4px;border-radius:2px;background:var(--border);"></div>
+      </div>
+
+      <!-- STEP 1: Site Location -->
+      <div id="visit-step-1">
+        <div style="font-size:16px;font-weight:700;margin-bottom:16px;">📍 Site Location</div>
+
+        <div class="form-group">
+          <label class="form-label">Site name / project name</label>
+          <input class="form-input" id="vs-site-name" type="text" placeholder="e.g. Krishna Residency Block B">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Pin site on map <span class="req">*</span></label>
+          <div class="map-container" id="visit-map">
+            <div class="map-placeholder">
+              <div style="font-size:28px;">📍</div>
+              <div>Tap to set site location</div>
+              <button class="btn btn-sm btn-secondary mt-8" onclick="getCurrentLocationForVisit()" style="width:auto;padding:8px 16px;">Use my location</button>
+            </div>
+          </div>
+          <div class="map-pin-info hidden" id="visit-pin-info">
+            <span id="visit-pin-addr">—</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Area / locality <span class="req">*</span></label>
+          <input class="form-input" id="vs-area" type="text" placeholder="e.g. Bhavanipuram, Vijayawada">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">City <span class="req">*</span></label>
+          <input class="form-input" id="vs-city" type="text" placeholder="Vijayawada">
+        </div>
+
+        <button class="btn btn-primary" onclick="visitNextStep(2)">Next: Site Details →</button>
+      </div>
+
+      <!-- STEP 2: Site Details -->
+      <div id="visit-step-2" class="hidden">
+        <div style="font-size:16px;font-weight:700;margin-bottom:16px;">🏗️ Site Details</div>
+
+        <div class="form-group">
+          <label class="form-label">Construction stage <span class="req">*</span></label>
+          <select class="form-select" id="vs-stage">
+            <option value="">Select stage…</option>
+            <option value="foundation">Foundation / Excavation</option>
+            <option value="structure">Structure / Columns</option>
+            <option value="brick_work">Brick Work</option>
+            <option value="plastering">Plastering</option>
+            <option value="tiling_ready">Tiling Ready</option>
+            <option value="tiling_in_progress">Tiling In Progress</option>
+            <option value="finishing">Finishing / Paint</option>
+            <option value="handover">Near Handover</option>
+            <option value="renovation">Renovation</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Project type</label>
+          <div class="chip-row" id="project-type-chips">
+            <div class="chip" data-val="residential_house">House</div>
+            <div class="chip" data-val="apartment">Apartment</div>
+            <div class="chip" data-val="villa">Villa</div>
+            <div class="chip" data-val="commercial">Commercial</div>
+            <div class="chip" data-val="hotel">Hotel / Hospitality</div>
+            <div class="chip" data-val="renovation">Renovation</div>
+          </div>
+        </div>
+
+        <!-- SqFt: Room Count Method -->
+        <div class="form-group">
+          <label class="form-label">Rooms on site <span style="font-size:10px;color:var(--text3);font-weight:400">(helps estimate area)</span></label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="room-count-grid">
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+              <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Bedrooms</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button onclick="adjRoom('beds',-1)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;">−</button>
+                <span id="room-beds" style="font-size:18px;font-weight:700;min-width:20px;text-align:center;">0</span>
+                <button onclick="adjRoom('beds',1)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;">+</button>
+              </div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+              <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Bathrooms</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button onclick="adjRoom('baths',-1)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;">−</button>
+                <span id="room-baths" style="font-size:18px;font-weight:700;min-width:20px;text-align:center;">0</span>
+                <button onclick="adjRoom('baths',1)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;">+</button>
+              </div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+              <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Floors</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button onclick="adjRoom('floors',-1)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;">−</button>
+                <span id="room-floors" style="font-size:18px;font-weight:700;min-width:20px;text-align:center;">1</span>
+                <button onclick="adjRoom('floors',1)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;">+</button>
+              </div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+              <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Plot size</div>
+              <input class="form-input" id="room-plot" type="text" placeholder="e.g. 30×40" style="padding:4px 8px;font-size:13px;margin:0;" oninput="calcSqft()">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;" id="room-extras">
+            <div class="chip" data-room="living" onclick="toggleRoomExtra(this)">Living room</div>
+            <div class="chip" data-room="kitchen" onclick="toggleRoomExtra(this)">Kitchen</div>
+            <div class="chip" data-room="pooja" onclick="toggleRoomExtra(this)">Pooja room</div>
+            <div class="chip" data-room="parking" onclick="toggleRoomExtra(this)">Parking</div>
+            <div class="chip" data-room="terrace" onclick="toggleRoomExtra(this)">Terrace</div>
+            <div class="chip" data-room="balcony" onclick="toggleRoomExtra(this)">Balcony</div>
+          </div>
+        </div>
+
+        <!-- SqFt estimate display -->
+        <div id="sqft-estimate-box" style="display:none;background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
+          <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:2px;">ESTIMATED AREA</div>
+          <div style="font-size:20px;font-weight:700;color:var(--text);" id="sqft-estimate-val">—</div>
+          <div style="font-size:11px;color:var(--text3);" id="sqft-estimate-method">Based on room count</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Or enter exact sqft if known</label>
+          <input class="form-input mono" id="vs-sqft" type="number" inputmode="numeric" placeholder="Leave blank to use estimate above">
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Competitor & Customer Requirements — full rethink -->
+        <div class="form-group">
+          <label class="form-label">Competitor materials on site</label>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <input class="form-input" id="competitor-text" type="text" placeholder="Type brand name (e.g. Orient, Nitco, Jaquar…)" style="flex:1;">
+            <button onclick="addCompetitorEntry()" style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;white-space:nowrap;font-size:13px;">Add</button>
+          </div>
+          <div id="competitor-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Has customer decided on any brand?</label>
+          <div style="display:flex;flex-direction:column;gap:8px;" id="decided-brands-list"></div>
+          <button onclick="addDecidedBrand()" class="add-contact-btn" style="margin-top:8px;">+ Add decided brand</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">What does customer need? <span style="font-size:10px;color:var(--text3)">(select all — flags relevant departments)</span></label>
+          <div class="chip-row" id="customer-req-chips">
+            <div class="chip" data-req="Tiles" data-dept="Tiles">Tiles / Granite / Marble</div>
+            <div class="chip" data-req="Sanitaryware" data-dept="Sanitaryware">Sanitaryware / CP Fittings</div>
+            <div class="chip" data-req="Paints" data-dept="Paints">Paints</div>
+            <div class="chip" data-req="Plywood" data-dept="Plywood">Plywood / Laminates</div>
+            <div class="chip" data-req="Pipes" data-dept="Pipes">PVC Pipes</div>
+            <div class="chip" data-req="Electrical" data-dept="Electrical">Electrical Wires</div>
+            <div class="chip" data-req="Waterproofing" data-dept="Waterproofing">Waterproofing</div>
+            <div class="chip" data-req="Interior" data-dept="Interior" style="border-color:var(--warning);">🎨 Interior Design</div>
+            <div class="chip" data-req="Construction" data-dept="Projects" style="border-color:var(--warning);">🏗️ Full Construction</div>
+            <div class="chip" data-req="Architect" data-dept="Projects" style="border-color:var(--warning);">📐 Architect / Drawing</div>
+            <div class="chip" data-req="Modular" data-dept="Furniture" style="border-color:var(--warning);">🪑 Modular Kitchen</div>
+            <div class="chip" data-req="FalseCeiling" data-dept="Vendor" style="border-color:var(--warning);">🏠 False Ceiling</div>
+          </div>
+          <div id="dept-flag-notice" style="display:none;margin-top:10px;padding:8px 12px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;font-size:12px;color:#FBBF24;">
+            ⚡ Tasks will be created for: <span id="dept-flag-list"></span>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="visitNextStep(1)">← Back</button>
+          <button class="btn btn-primary" onclick="visitNextStep(3)">Next: Contacts →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Contacts -->
+      <div id="visit-step-3" class="hidden">
+        <div style="font-size:16px;font-weight:700;margin-bottom:6px;">👥 Site Contacts</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Add as many contacts as possible — every number matters</div>
+
+        <div id="contacts-list"></div>
+
+        <div class="chip-row" style="margin-bottom:16px;" id="add-contact-roles">
+          <div class="chip" onclick="addContact('Owner')">+ Owner</div>
+          <div class="chip" onclick="addContact('Contractor')">+ Contractor</div>
+          <div class="chip" onclick="addContact('Builder')">+ Builder</div>
+          <div class="chip" onclick="addContact('Architect')">+ Architect</div>
+          <div class="chip" onclick="addContact('Interior')">+ Interior</div>
+          <div class="chip" onclick="addContact('Site Supervisor')">+ Supervisor</div>
+          <div class="chip" onclick="addContact('Electrician')">+ Electrician</div>
+          <div class="chip" onclick="addContact('Plumber')">+ Plumber</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Follow-up date <span class="req">*</span></label>
+          <input class="form-input" id="vs-followup" type="date">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="vs-notes" placeholder="What did you discuss? Any specific requirements mentioned?"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Referral — who sent you here?</label>
+          <input class="form-input" id="vs-referral" type="text" placeholder="e.g. Ravi Contractor, Walk-in, Assignment">
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="visitNextStep(2)">← Back</button>
+          <button class="btn btn-primary" onclick="visitNextStep(4)">Next: Photos →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Photos + Submit -->
+      <div id="visit-step-4" class="hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:16px;font-weight:700;">📸 Site Photos</div>
+          <button onclick="showQualityBreakdown()" style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600;" id="quality-score-btn">Quality: —%</button>
+        </div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Minimum 1 required. Capture what you see — the AI will analyse it.</div>
+
+        <div class="photo-grid" id="site-photo-grid">
+          <!-- slots added dynamically -->
+        </div>
+
+        <button class="add-contact-btn mt-12" id="add-photo-btn" onclick="addPhotoSlot()">
+          + Add photo
+        </button>
+
+        <!-- Photo slot labels guide -->
+        <div style="margin:16px 0;padding:12px;background:var(--surface2);border-radius:8px;">
+          <div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px;">WHAT TO CAPTURE</div>
+          <div style="font-size:12px;color:var(--text3);line-height:1.8;">
+            🏠 Site exterior &nbsp;·&nbsp; 🪟 Floor / slab &nbsp;·&nbsp; 🚿 Bathroom rough-in<br>
+            🍳 Kitchen area &nbsp;·&nbsp; 🧱 Walls &nbsp;·&nbsp; 🏷️ Competitor materials
+          </div>
+        </div>
+
+        <!-- AI will appear here after submit -->
+        <div id="ai-result-area" class="hidden">
+          <div class="ai-card">
+            <div class="ai-header">
+              <span style="font-size:18px;">🤖</span>
+              <span class="ai-badge">AI SITE ANALYSIS</span>
+              <span style="margin-left:auto;font-size:11px;color:var(--text3);" id="ai-stage-detected"></span>
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Requirements detected</div>
+            <div class="ai-req-list" id="ai-req-chips"></div>
+            <div class="flex-between">
+              <div style="font-size:12px;color:var(--text2);">Estimated value range</div>
+              <div class="ai-value-range" id="ai-value-range">—</div>
+            </div>
+            <div class="divider"></div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">AI suggestion</div>
+            <div style="font-size:13px;color:var(--text);" id="ai-suggestion-text">—</div>
+          </div>
+        </div>
+
+        <div class="btn-row mt-16">
+          <button class="btn btn-secondary" onclick="visitNextStep(3)">← Back</button>
+          <button class="btn btn-primary" id="btn-submit-visit" onclick="submitVisit()">
+            Submit Visit
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     VISIT DETAIL SHEET
+═══════════════════════════════════════════════ -->
+<div class="sheet-backdrop" id="sheet-visit-detail">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title" id="vd-title">Site Visit</div>
+      <button class="sheet-close" onclick="closeSheet('sheet-visit-detail')">✕</button>
+    </div>
+    <div class="sheet-body" id="vd-body">
+      <!-- Populated dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     TOAST
+═══════════════════════════════════════════════ -->
+<div id="toast" style="position:fixed;bottom:calc(var(--nav-h)+16px);left:16px;right:16px;
+     background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+     padding:14px 16px;font-size:14px;font-weight:500;z-index:9999;
+     transform:translateY(20px);opacity:0;transition:all .25s;pointer-events:none;"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://ndamdnlsuktucqtcbhgp.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kYW1kbmxzdWt0dWNxdGNiaGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTg1MzgsImV4cCI6MjA5Njk5NDUzOH0.7pGJu4bbNhl4E-4Do24jS9_p6nLUa1eN4JXQSqEF9VU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const FIELD_ROLES = ['Field Executive','Team Leader','Mapping Executive','ASM','Cluster Head','Region Head'];
+const LOC_INTERVAL_MS = 2 * 60 * 1000; // 2 min
+
+// ── State ──
+let currentUser = null;      // staff row
+let currentAttendance = null;
+let locationWatcher = null;
+let locPingTimer = null;
+let lastLocation = null;
+let visitContacts = [];
+let visitPhotos = [];
+let visitPinLat = null;
+let visitPinLng = null;
+let visitProjectType = null;
+// visitCompetitors replaced by competitorEntries array
+let visitCurrentStep = 1;
+let mapInitialized = false;
+let googleMap = null;
+let visitMapObj = null;
+let visitMarker = null;
+let photoCounter = 0;
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+window.initMapLib = () => { mapInitialized = true; };
+
+document.addEventListener('DOMContentLoaded', async () => {
+  initClockTick();
+  await checkSession();
+  initOtpInputs();
+  initChips();
+  initOdoLiveCalc();
+  addPhotoSlot(); // default first slot
+});
+
+async function checkSession() {
+  const saved = localStorage.getItem('vw_field_staff');
+  if (!saved) return;
+  try {
+    const parsed = JSON.parse(saved);
+    if (!parsed) return;
+
+    // Support both old format (just id) and new format (full object)
+    const staffObj = typeof parsed === 'object' && parsed.name ? parsed : null;
+    const staffId  = staffObj ? staffObj.id : parsed;
+
+    if (staffObj && isFieldRole(staffObj)) {
+      // Full object saved — log in immediately without network call
+      currentUser = staffObj;
+      await afterLogin();
+      // Re-validate in background silently — update stored record if changed
+      sb.from('staff').select('*').eq('id', staffId).single().then(({ data }) => {
+        if (data && isFieldRole(data)) {
+          currentUser = data;
+          localStorage.setItem('vw_field_staff', JSON.stringify(data));
+          // Refresh name/role in header silently
+          document.getElementById('hdr-name').textContent = data.name;
+          document.getElementById('hdr-role').textContent = data.designation || data.role || 'Field';
+        }
+      }).catch(() => {}); // Network error — stay logged in with cached data
+    } else {
+      // Old format: just an ID — fetch once then upgrade to full object
+      const { data } = await sb.from('staff').select('*').eq('id', staffId).single();
+      if (data && isFieldRole(data)) {
+        currentUser = data;
+        localStorage.setItem('vw_field_staff', JSON.stringify(data)); // upgrade format
+        await afterLogin();
+      }
+    }
+  } catch(e) {
+    // Never wipe session on error — user stays logged in
+    console.warn('Session check error (staying logged in):', e.message);
+  }
+}
+
+// Restore session when app returns from background (call, notification, back button)
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && !currentUser) {
+    await checkSession();
+  }
+});
+
+// Handle page restored from bfcache (Android back button)
+window.addEventListener('pageshow', async (e) => {
+  if (e.persisted && !currentUser) {
+    await checkSession();
+  }
+});
+
+function isFieldRole(staff) {
+  return FIELD_ROLES.some(r => 
+    (staff.role||'').toLowerCase().includes(r.toLowerCase()) ||
+    (staff.designation||'').toLowerCase().includes(r.toLowerCase())
+  ) || (staff.department||'').toLowerCase() === 'field';
+}
+
+// ══════════════════════════════════════════════
+// AUTH — OTP via edge function
+// ══════════════════════════════════════════════
+const OTP_FN = `${SUPABASE_URL}/functions/v1/field-otp`;
+
+async function callOTPFn(body) {
+  const res = await fetch(OTP_FN, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+document.getElementById('btn-send-otp').onclick = async () => {
+  const phone = document.getElementById('input-phone').value.trim().replace(/\D/g,'');
+  if (phone.length !== 10) { showToast('Enter a valid 10-digit number'); return; }
+
+  const btn = document.getElementById('btn-send-otp');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  const result = await callOTPFn({ phone, action: 'send' });
+
+  if (result.error) {
+    showToast(result.error);
+    btn.disabled = false; btn.textContent = 'Send OTP';
+    return;
+  }
+
+  // Show appropriate message based on delivery method
+  const isWhatsApp = result.delivery === 'whatsapp';
+  const sentMsg = isWhatsApp
+    ? `OTP sent to your WhatsApp (+91 ${phone})`
+    : `OTP for +91 ${phone}`;
+
+  document.getElementById('otp-sent-msg').textContent = sentMsg;
+  document.getElementById('login-phone-step').classList.add('hidden');
+  document.getElementById('login-otp-step').classList.remove('hidden');
+  document.querySelector('.otp-digit').focus();
+  btn.disabled = false; btn.textContent = 'Send OTP';
+
+  if (isWhatsApp) {
+    // WhatsApp delivered — rep checks their WA
+    showToast('OTP sent to WhatsApp ✅', 4000);
+  } else if (result.dev_otp) {
+    // Fallback: show on screen (until WA template approved)
+    showToast('Your OTP: ' + result.dev_otp, 60000);
+    // Also auto-fill OTP digits for convenience
+    const digits = result.dev_otp.toString().split('');
+    document.querySelectorAll('.otp-digit').forEach((d, i) => { d.value = digits[i] || ''; });
+  }
+};
+
+document.getElementById('btn-verify-otp').onclick = async () => {
+  const phone = document.getElementById('input-phone').value.trim().replace(/\D/g,'');
+  const otp = [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
+  if (otp.length !== 6) { showToast('Enter the 6-digit OTP'); return; }
+
+  const btn = document.getElementById('btn-verify-otp');
+  btn.disabled = true; btn.textContent = 'Verifying…';
+
+  const result = await callOTPFn({ phone, action: 'verify', otp });
+
+  if (result.error) {
+    showToast(result.error);
+    btn.disabled = false; btn.textContent = 'Verify & Sign In';
+    return;
+  }
+
+  currentUser = result.staff;
+  localStorage.setItem('vw_field_staff', JSON.stringify(result.staff)); // store full record
+  await afterLogin();
+  btn.disabled = false; btn.textContent = 'Verify & Sign In';
+};
+
+document.getElementById('btn-resend-otp').onclick = () => {
+  document.getElementById('login-otp-step').classList.add('hidden');
+  document.getElementById('login-phone-step').classList.remove('hidden');
+  document.querySelectorAll('.otp-digit').forEach(d => d.value = '');
+};
+
+function initOtpInputs() {
+  const digits = document.querySelectorAll('.otp-digit');
+  digits.forEach((d, i) => {
+    d.addEventListener('input', () => {
+      if (d.value && i < digits.length - 1) digits[i+1].focus();
+    });
+    d.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !d.value && i > 0) digits[i-1].focus();
+    });
+  });
+}
+
+// ══════════════════════════════════════════════
+// POST-LOGIN
+// ══════════════════════════════════════════════
+async function afterLogin() {
+  showScreen('screen-app');
+  document.getElementById('hdr-name').textContent = currentUser.name;
+  document.getElementById('hdr-role').textContent = currentUser.designation || currentUser.role || 'Field';
+  document.getElementById('profile-name').textContent = currentUser.name;
+  document.getElementById('profile-desig').textContent = currentUser.designation || currentUser.role;
+  document.getElementById('profile-city').textContent = currentUser.city || 'Vijayawada';
+
+  await loadTodayData();
+  await requestPermissions();
+  setTimeout(showIOSInstallHint, 2000);
+  showTeamTabIfManager();
+}
+
+// ── Manager role detection ──
+function isManagerRole(staff) {
+  const r = ((staff.designation || '') + ' ' + (staff.role || '')).toLowerCase();
+  return r.includes('team leader') || r.includes('tl') || r.includes('asm') ||
+         r.includes('cluster head') || r.includes('region head');
+}
+
+async function showTeamTabIfManager() {
+  if (!currentUser) return;
+  if (!isManagerRole(currentUser)) return;
+  // Only show team tab if someone actually reports to this person
+  const { data } = await sb.from('staff')
+    .select('id').eq('reporting_to', currentUser.id).eq('active', true).limit(1);
+  if (data?.length > 0) {
+    const navTeam = document.getElementById('nav-team');
+    if (navTeam) navTeam.style.display = '';
+  }
+}
+
+// ── Team data loading ──
+async function loadTeamData() {
+  const now = new Date();
+  const todayIST = new Date(now.getTime() + 5.5*60*60*1000);
+  const todayStr = todayIST.toISOString().split('T')[0];
+  const since24h = new Date(Date.now() - 24*60*60*1000).toISOString();
+  const since2min = new Date(Date.now() - 2*60*1000).toISOString();
+
+  // Only show staff who directly report to this person
+  const { data: teamStaff } = await sb.from('staff')
+    .select('id,name,designation,role,phone')
+    .eq('active', true)
+    .eq('reporting_to', currentUser.id);
+
+  if (!teamStaff?.length) {
+    document.getElementById('team-rep-list').innerHTML =
+      '<div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px;">No team members found.<br><span style="font-size:11px;">Make sure staff are added with department = Field</span></div>';
+    return;
+  }
+
+  const staffIds = teamStaff.map(s => s.id);
+
+  // Parallel fetch: today's attendance, today's visits, last location
+  const [{ data: attRows }, { data: visitRows }, { data: locRows }, { data: alertRows }] = await Promise.all([
+    sb.from('attendance').select('staff_id,punch_in,punch_out,km_travelled,odo_in_reading')
+      .in('staff_id', staffIds).gte('date', since24h),
+    sb.from('field_visits').select('id,staff_id,created_at,site_address,construction_stage,visit_quality_score')
+      .in('staff_id', staffIds).gte('created_at', todayStr + 'T00:00:00+05:30')
+      .order('created_at', {ascending:false}),
+    sb.from('field_location_log').select('staff_id,lat,lng,recorded_at,is_moving,speed_kmh')
+      .in('staff_id', staffIds).order('recorded_at', {ascending:false}).limit(staffIds.length * 3),
+    sb.from('field_alerts').select('staff_id,alert_type,severity,triggered_at')
+      .in('staff_id', staffIds).is('resolved_at', null)
+      .gte('triggered_at', todayStr + 'T00:00:00+05:30'),
+  ]);
+
+  // Build per-rep data map
+  const repData = {};
+  teamStaff.forEach(s => { repData[s.id] = { ...s, att:null, visits:[], lastLoc:null, alerts:[] }; });
+  (attRows||[]).forEach(a => { if (repData[a.staff_id]) repData[a.staff_id].att = a; });
+  (visitRows||[]).forEach(v => { if (repData[v.staff_id]) repData[v.staff_id].visits.push(v); });
+  (alertRows||[]).forEach(a => { if (repData[a.staff_id]) repData[a.staff_id].alerts.push(a); });
+
+  // Last location per rep (already ordered desc)
+  const seenLoc = new Set();
+  (locRows||[]).forEach(l => {
+    if (!seenLoc.has(l.staff_id)) { seenLoc.add(l.staff_id); if (repData[l.staff_id]) repData[l.staff_id].lastLoc = l; }
+  });
+
+  // Summary stats
+  const active = Object.values(repData).filter(r => r.att && !r.att.punch_out).length;
+  const totalVisits = Object.values(repData).reduce((s,r) => s + r.visits.length, 0);
+  const target = 15;
+  const onTarget = Object.values(repData).filter(r => r.visits.length >= Math.ceil(target * 0.6)).length;
+  const totalAlerts = Object.values(repData).reduce((s,r) => s + r.alerts.length, 0);
+
+  document.getElementById('team-active').textContent = active;
+  document.getElementById('team-total-visits').textContent = totalVisits;
+  document.getElementById('team-on-target').textContent = onTarget;
+  document.getElementById('team-alerts').textContent = totalAlerts || '—';
+  document.getElementById('team-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+
+  // Render rep cards
+  document.getElementById('team-rep-list').innerHTML = Object.values(repData).map(r => {
+    const isActive = r.att && !r.att.punch_out;
+    const locAge = r.lastLoc ? Math.round((Date.now() - new Date(r.lastLoc.recorded_at)) / 60000) : null;
+    const isLive = locAge !== null && locAge <= 5;
+    const visitCount = r.visits.length;
+    const visitPct = Math.min(100, Math.round(visitCount / target * 100));
+    const hasAlerts = r.alerts.length > 0;
+    const avgQuality = r.visits.length ?
+      Math.round(r.visits.reduce((s,v) => s + (v.visit_quality_score||0), 0) / r.visits.length) : null;
+
+    return `
+    <div class="card ${hasAlerts ? 'card-danger' : isActive ? 'card-success' : ''}" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <!-- Avatar + status -->
+        <div style="position:relative;">
+          <div style="width:44px;height:44px;border-radius:50%;background:var(--surface2);
+               border:2px solid ${isActive ? 'var(--success)' : 'var(--border)'};
+               display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>
+          ${isLive ? '<div style="position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background:var(--success);border:2px solid var(--surface);"><div class="live-dot" style="width:8px;height:8px;margin:0;"></div></div>' : ''}
+        </div>
+
+        <!-- Name + designation -->
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:14px;">${r.name}</div>
+          <div style="font-size:11px;color:var(--text2);">${r.designation || r.role}</div>
+          <div style="font-size:11px;margin-top:3px;color:${isActive ? 'var(--success)' : 'var(--text3)'};">
+            ${isActive ? '🟢 Punched in' : r.att?.punch_out ? '⚫ Day ended' : '🔴 Not punched in'}
+            ${isLive ? ` · 📍 ${locAge}m ago` : ''}
+          </div>
+        </div>
+
+        <!-- Visit count -->
+        <div style="text-align:right;">
+          <div class="mono" style="font-size:24px;font-weight:700;
+               color:${visitPct>=100?'var(--success)':visitPct>=60?'var(--accent)':'var(--text)'};">
+            ${visitCount}
+          </div>
+          <div style="font-size:10px;color:var(--text3);">/${target} visits</div>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="progress-wrap" style="margin:10px 0 8px;">
+        <div class="progress-bar">
+          <div class="progress-fill ${visitPct>=100?'success':''}" style="width:${visitPct}%"></div>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div style="display:flex;gap:16px;font-size:12px;color:var(--text2);">
+        ${r.att?.km_travelled ? `<span>🛣️ ${r.att.km_travelled} km</span>` : ''}
+        ${avgQuality !== null ? `<span>⭐ ${avgQuality}% quality</span>` : ''}
+        ${hasAlerts ? `<span style="color:var(--danger);">⚠️ ${r.alerts.length} alert${r.alerts.length>1?'s':''}</span>` : ''}
+        ${r.visits[0] ? `<span>Last: ${new Date(r.visits[0].created_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span>` : '<span>No visits yet</span>'}
+      </div>
+
+      <!-- Last visit -->
+      ${r.visits[0] ? `
+        <div style="margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;font-size:12px;">
+          <span style="color:var(--text2);">Last visit:</span> ${r.visits[0].site_address || 'Site visit'}
+          ${r.visits[0].construction_stage ? `<span class="visit-stage" style="margin-left:6px;font-size:10px;">${stageLabel(r.visits[0].construction_stage)}</span>` : ''}
+        </div>` : ''}
+    </div>`;
+  }).join('');
+
+  // Load visit feed
+  loadTeamVisits(visitRows || []);
+}
+
+async function loadTeamVisits(visitRows) {
+  if (!visitRows) {
+    // Re-fetch if called from refresh button
+    const { data: teamStaffForFeed } = await sb.from('staff')
+      .select('id').eq('active', true).eq('department', 'Field');
+    const feedIds = (teamStaffForFeed || []).map(s => s.id);
+    if (!feedIds.length) { visitRows = []; }
+    else {
+      const { data } = await sb.from('field_visits')
+        .select('id,staff_id,created_at,site_address,construction_stage,visit_quality_score,executive_name,site_contacts')
+        .in('staff_id', feedIds).order('created_at', {ascending:false}).limit(20);
+      visitRows = data || [];
+    }
+  }
+  const feed = document.getElementById('team-visits-feed');
+  if (!visitRows.length) {
+    feed.innerHTML = '<div style="text-align:center;padding:20px 0;color:var(--text3);font-size:13px;">No visits today yet</div>';
+    return;
+  }
+  feed.innerHTML = visitRows.slice(0,15).map(v => `
+    <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border2);align-items:flex-start;">
+      <div style="font-size:20px;margin-top:2px;">📍</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          ${v.site_address || 'Site Visit'}
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px;">
+          ${v.executive_name || 'Rep'} · ${new Date(v.created_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}
+          ${v.visit_quality_score ? ` · ${Math.round(v.visit_quality_score)}% quality` : ''}
+        </div>
+      </div>
+      ${v.construction_stage ? `<div class="visit-stage" style="flex-shrink:0;font-size:10px;">${stageLabel(v.construction_stage)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function requestNotificationPermission() {
+  return new Promise(resolve => {
+    const existing = document.getElementById('sheet-notif-explain');
+    if (existing) existing.remove();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'sheet-backdrop';
+    sheet.id = 'sheet-notif-explain';
+    sheet.innerHTML = `
+      <div class="sheet" style="padding-bottom:env(safe-area-inset-bottom);">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header" style="border:none;">
+          <div class="sheet-title">Enable Tracking Notification</div>
+        </div>
+        <div class="sheet-body">
+
+          <div style="text-align:center;margin-bottom:20px;">
+            <div style="font-size:48px;margin-bottom:12px;">🔔</div>
+            <div style="font-size:15px;font-weight:600;margin-bottom:8px;">
+              Keep location running in background
+            </div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.6;">
+              A notification will show on your phone while you're on duty.
+              This keeps your location active even when the screen is off.
+            </div>
+          </div>
+
+          <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:20px;">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">
+              What you'll see on your phone
+            </div>
+            <div style="background:var(--surface);border-radius:8px;padding:12px;border:1px solid var(--border);">
+              <div style="display:flex;align-items:flex-start;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:var(--accent);
+                     display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;
+                     color:var(--base);flex-shrink:0;">VW</div>
+                <div>
+                  <div style="font-size:13px;font-weight:600;">🟢 V Wholesale Field — Tracking Active</div>
+                  <div style="font-size:12px;color:var(--text2);margin-top:2px;">Your name · visits today · km today</div>
+                </div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:8px;text-align:center;">
+              Notification stays until you punch out
+            </div>
+          </div>
+
+          <button class="btn btn-primary" id="btn-allow-notif">
+            Allow Notification
+          </button>
+          <button class="btn btn-ghost mt-8" style="font-size:13px;color:var(--text3);"
+            id="btn-skip-notif">
+            Skip — location may stop in background
+          </button>
+
+        </div>
+      </div>`;
+
+    document.body.appendChild(sheet);
+    setTimeout(() => sheet.classList.add('open'), 10);
+
+    document.getElementById('btn-allow-notif').onclick = async () => {
+      sheet.classList.remove('open');
+      setTimeout(() => sheet.remove(), 300);
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        showBatterySetupTip();
+      }
+      resolve(permission);
+    };
+
+    document.getElementById('btn-skip-notif').onclick = () => {
+      sheet.classList.remove('open');
+      setTimeout(() => sheet.remove(), 300);
+      resolve('denied');
+    };
+
+    sheet.addEventListener('click', e => {
+      if (e.target === sheet) {
+        sheet.classList.remove('open');
+        setTimeout(() => sheet.remove(), 300);
+        resolve('dismissed');
+      }
+    });
+  });
+}
+
+function showBatterySetupTip() {
+  if (localStorage.getItem('vw_field_battery_tip_shown')) return;
+
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet-backdrop';
+  sheet.id = 'sheet-battery-tip';
+  sheet.innerHTML = `
+    <div class="sheet" style="padding-bottom:env(safe-area-inset-bottom);">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header" style="border:none;">
+        <div class="sheet-title">One-Time Phone Setup</div>
+      </div>
+      <div class="sheet-body">
+
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:48px;margin-bottom:10px;">🔋</div>
+          <div style="font-size:15px;font-weight:600;margin-bottom:6px;">
+            Allow background activity
+          </div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.6;">
+            Android stops apps in the background to save battery.
+            Do this once so your location keeps running while on duty.
+          </div>
+        </div>
+
+        <!-- Step by step -->
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+
+          <div style="display:flex;gap:12px;align-items:flex-start;background:var(--surface2);border-radius:10px;padding:12px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--base);
+                 display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;">1</div>
+            <div>
+              <div style="font-size:14px;font-weight:600;">Open Android Settings</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:2px;">
+                Swipe down → tap ⚙️ Settings icon
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;background:var(--surface2);border-radius:10px;padding:12px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--base);
+                 display:flex;align-items:center;justify-content:middle;font-size:14px;font-weight:800;flex-shrink:0;align-items:center;justify-content:center;">2</div>
+            <div>
+              <div style="font-size:14px;font-weight:600;">Go to Apps</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:2px;">
+                Tap <strong>Apps</strong> or <strong>Application Manager</strong>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;background:var(--surface2);border-radius:10px;padding:12px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--base);
+                 display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;">3</div>
+            <div>
+              <div style="font-size:14px;font-weight:600;">Find Chrome</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:2px;">
+                Scroll and tap <strong>Chrome</strong> browser
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;background:var(--surface2);border-radius:10px;padding:12px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--base);
+                 display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;">4</div>
+            <div>
+              <div style="font-size:14px;font-weight:600;">Tap Battery</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:2px;">
+                Inside Chrome settings, tap <strong>Battery</strong>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;
+               background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);border-radius:10px;padding:12px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--base);
+                 display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;">5</div>
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--accent);">Select "Unrestricted"</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:2px;">
+                Change from <em>Optimized</em> to <strong style="color:var(--accent);">Unrestricted</strong>
+                — this lets the app run in background
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="background:var(--success-soft);border:1px solid rgba(34,197,94,.3);border-radius:10px;
+             padding:12px 14px;font-size:12px;color:var(--success);margin-bottom:16px;">
+          ✅ Do this once — never needed again. Takes about 30 seconds.
+        </div>
+
+        <button class="btn btn-primary" onclick="
+          localStorage.setItem('vw_field_battery_tip_shown', '1');
+          document.getElementById('sheet-battery-tip').classList.remove('open');
+          setTimeout(() => document.getElementById('sheet-battery-tip')?.remove(), 300);
+        ">
+          Done — I've set it up
+        </button>
+        <button class="btn btn-ghost mt-8" style="font-size:13px;" onclick="
+          localStorage.setItem('vw_field_battery_tip_shown', '1');
+          document.getElementById('sheet-battery-tip').classList.remove('open');
+          setTimeout(() => document.getElementById('sheet-battery-tip')?.remove(), 300);
+        ">
+          I'll do it later
+        </button>
+
+      </div>
+    </div>`;
+
+  document.body.appendChild(sheet);
+  setTimeout(() => sheet.classList.add('open'), 400); // slight delay after notif permission
+  sheet.addEventListener('click', e => {
+    if (e.target === sheet) {
+      localStorage.setItem('vw_field_battery_tip_shown', '1');
+      sheet.classList.remove('open');
+      setTimeout(() => sheet.remove(), 300);
+    }
+  });
+}
+
+async function requestPermissions() {
+  // Only show permission sheet once — if already shown, just start tracking
+  if (localStorage.getItem('vw_field_perms_shown')) {
+    startLocationTracking();
+    return;
+  }
+  // Check actual permission states
+  const camStatus = await navigator.permissions?.query({ name: 'camera' }).catch(() => null);
+  const gpsStatus = await navigator.permissions?.query({ name: 'geolocation' }).catch(() => null);
+  const needsCam = !camStatus || camStatus.state === 'prompt';
+  const needsGps = !gpsStatus || gpsStatus.state === 'prompt';
+  // If both already granted, mark as shown and skip
+  if (!needsCam && !needsGps) {
+    localStorage.setItem('vw_field_perms_shown', '1');
+    startLocationTracking();
+    return;
+  }
+  showPermissionSheet(needsCam, needsGps);
+}
+
+function showPermissionSheet(needsCam, needsGps) {
+  const existing = document.getElementById('sheet-permissions');
+  if (existing) existing.remove();
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet-backdrop';
+  sheet.id = 'sheet-permissions';
+  sheet.innerHTML = `
+    <div class="sheet" style="padding-bottom:env(safe-area-inset-bottom);">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header" style="border:none;"><div class="sheet-title">App Permissions</div></div>
+      <div class="sheet-body">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:40px;margin-bottom:8px;">&#x1F510;</div>
+          <div style="font-size:14px;color:var(--text2);">V Wholesale Field needs a few permissions to work properly</div>
+        </div>
+        ${needsGps ? `<div class="card card-accent" style="margin-bottom:10px;">
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="font-size:24px;">&#x1F4CD;</div>
+            <div><div style="font-weight:600;margin-bottom:4px;">Location</div>
+            <div style="font-size:13px;color:var(--text2);">Used for attendance check-in, site visit pinning, and live tracking while on duty. Only active when punched in.</div></div>
+          </div></div>` : ''}
+        ${needsCam ? `<div class="card card-accent" style="margin-bottom:10px;">
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="font-size:24px;">&#x1F4F7;</div>
+            <div><div style="font-weight:600;margin-bottom:4px;">Camera</div>
+            <div style="font-size:13px;color:var(--text2);">Used for selfie at punch-in, odometer photos, and site visit photos for AI analysis.</div></div>
+          </div></div>` : ''}
+        <div style="font-size:12px;color:var(--text3);text-align:center;margin:16px 0 20px;">
+          Location is tracked only during working hours while punched in. Photos are stored securely for work records only.
+        </div>
+        <button class="btn btn-primary" id="btn-grant-permissions">Allow Permissions</button>
+        <button class="btn btn-ghost mt-8" id="btn-skip-permissions" style="font-size:13px;">I'll allow later (some features won't work)</button>
+      </div>
+    </div>`;
+  document.body.appendChild(sheet);
+  // Small delay so DOM is ready, then open
+  setTimeout(() => sheet.classList.add('open'), 10);
+  // Register backdrop click-to-close for dynamically added sheet
+  sheet.addEventListener('click', e => { if (e.target === sheet) { sheet.classList.remove('open'); setTimeout(() => sheet.remove(), 300); startLocationTracking(); } });
+
+  document.getElementById('btn-grant-permissions').onclick = async () => {
+    if (needsGps) {
+      await new Promise(resolve => {
+        navigator.geolocation.getCurrentPosition(
+          pos => { lastLocation = pos; resolve(pos); },
+          () => resolve(null),
+          { enableHighAccuracy: true, timeout: 15000 }
+        );
+      });
+    }
+    if (needsCam) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach(t => t.stop());
+      } catch(e) { /* user denied — they can grant from settings */ }
+    }
+    sheet.classList.remove('open');
+    setTimeout(() => sheet.remove(), 300);
+    localStorage.setItem('vw_field_perms_shown', '1');
+    startLocationTracking();
+    showToast('Permissions set — ready to go');
+  };
+
+  document.getElementById('btn-skip-permissions').onclick = () => {
+    sheet.classList.remove('open');
+    setTimeout(() => sheet.remove(), 300);
+    localStorage.setItem('vw_field_perms_shown', '1');
+    startLocationTracking();
+    showToast('Some features need permissions to work', 4000);
+  };
+}
+
+// ── Cycle date helpers (21st–20th) ──
+function getCycleDates() {
+  const now = new Date();
+  const d = now.getDate();
+  let cycleStart, cycleEnd;
+  if (d >= 21) {
+    cycleStart = new Date(now.getFullYear(), now.getMonth(), 21);
+    cycleEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 20, 23, 59, 59);
+  } else {
+    cycleStart = new Date(now.getFullYear(), now.getMonth() - 1, 21);
+    cycleEnd   = new Date(now.getFullYear(), now.getMonth(), 20, 23, 59, 59);
+  }
+  return { cycleStart, cycleEnd };
+}
+
+function fmtCycleLabel(start, end) {
+  const opts = { day:'numeric', month:'short' };
+  return `${start.toLocaleDateString('en-IN', opts)} – ${end.toLocaleDateString('en-IN', opts)}`;
+}
+
+async function loadTodayData() {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+  const { cycleStart, cycleEnd } = getCycleDates();
+
+  // Update cycle label
+  const cycleEl = document.getElementById('cycle-label');
+  if (cycleEl) cycleEl.textContent = `THIS CYCLE (${fmtCycleLabel(cycleStart, cycleEnd)})`;
+
+  // ── Today's attendance (24h window for UTC/IST safety) ──
+  const since24h = new Date(Date.now() - 24*60*60*1000).toISOString();
+  const { data: att } = await sb.from('attendance')
+    .select('*').eq('staff_id', currentUser.id)
+    .gte('date', since24h)
+    .order('date', {ascending: false})
+    .limit(1)
+    .single();
+
+  if (att) {
+    currentAttendance = att;
+    document.getElementById('punch-label').textContent = att.punch_out ? 'Day ended' : 'Punched in since';
+    const punchTimeStr = att.punch_in ? att.punch_in.slice(0,5) : '--:--';
+    document.getElementById('punch-time').textContent = punchTimeStr;
+    const btn = document.getElementById('punch-btn');
+    const attDate = new Date(att.date);
+    const isToday = attDate.toDateString() === now.toDateString() ||
+      (now - attDate) < 20 * 60 * 60 * 1000;
+
+    if (att.punch_out && isToday) {
+      btn.textContent = 'Done ✓';
+      btn.className = 'punch-btn';
+      btn.style.background = 'var(--success-soft)';
+      btn.style.color = 'var(--success)';
+      btn.style.border = '1px solid var(--success)';
+      btn.onclick = null;
+    } else if (att.punch_out && !isToday) {
+      btn.textContent = 'Start Day';
+      btn.className = 'punch-btn in';
+      btn.style = '';
+      currentAttendance = null;
+      document.getElementById('punch-label').textContent = 'New day — punch in to start';
+      document.getElementById('punch-time').textContent = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+      btn.onclick = openPunchSheet;
+    } else {
+      btn.textContent = 'Punch Out';
+      btn.className = 'punch-btn out';
+      btn.onclick = openPunchSheet;
+    }
+
+    // ── Daily km ──
+    const kmToday = att.km_travelled || 0;
+    const fuelToday = att.fuel_reimbursement || 0;
+    document.getElementById('stat-km').textContent = kmToday || '—';
+    const kmFuelEl = document.getElementById('stat-km-fuel');
+    if (kmFuelEl) kmFuelEl.textContent = fuelToday ? `₹${parseFloat(fuelToday).toFixed(0)} fuel today` : '₹0 fuel';
+  }
+
+  // ── Today's visits (UTC-safe: use IST midnight range) ──
+  const todayIST = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+  const todayStr = todayIST.toISOString().split('T')[0];
+  const { data: visits } = await sb.from('field_visits')
+    .select('*').eq('staff_id', currentUser.id)
+    .gte('created_at', todayStr + 'T00:00:00+05:30')
+    .order('created_at', {ascending: false});
+
+  const count = visits?.length || 0;
+  document.getElementById('stat-visits').textContent = count;
+  const target = getDesignationTarget();
+  const pct = Math.min(100, Math.round(count / target * 100));
+  document.getElementById('visits-bar').style.width = pct + '%';
+  if (pct >= 100) document.getElementById('visits-bar').classList.add('success');
+  document.getElementById('stat-target').textContent = `Target: ${target}`;
+
+  renderVisitsList(visits || []);
+  renderAssignedList();
+  updateIncentiveTile(count, target);
+  // Update persistent notification with latest stats
+  const cycleKmTotal = parseFloat(currentAttendance?.km_travelled || 0);
+  updateTrackingNotification(count, cycleKmTotal);
+
+  // ── Cycle stats (21st–20th) ──
+  const [{ data: cycleAtts }, { data: cycleVisits }] = await Promise.all([
+    sb.from('attendance').select('km_travelled,fuel_reimbursement')
+      .eq('staff_id', currentUser.id)
+      .gte('date', cycleStart.toISOString())
+      .lte('date', cycleEnd.toISOString()),
+    sb.from('field_visits').select('id,created_at')
+      .eq('staff_id', currentUser.id)
+      .gte('created_at', cycleStart.toISOString())
+      .lte('created_at', cycleEnd.toISOString()),
+  ]);
+
+  const cycleKm   = (cycleAtts || []).reduce((s, r) => s + (parseFloat(r.km_travelled) || 0), 0);
+  const cycleFuel = (cycleAtts || []).reduce((s, r) => s + (parseFloat(r.fuel_reimbursement) || 0), 0);
+  const cycleVCount = cycleVisits?.length || 0;
+
+  const cycleVisitsEl = document.getElementById('stat-cycle-visits');
+  const cycleKmEl = document.getElementById('stat-cycle-km');
+  const cycleFuelEl = document.getElementById('stat-cycle-fuel');
+  const cycleDaysEl = document.getElementById('stat-cycle-days');
+
+  if (cycleVisitsEl) cycleVisitsEl.textContent = cycleVCount;
+  if (cycleKmEl) cycleKmEl.textContent = Math.round(cycleKm) || '—';
+  if (cycleFuelEl) cycleFuelEl.textContent = cycleFuel ? `₹${Math.round(cycleFuel).toLocaleString('en-IN')} fuel due` : '₹0 fuel';
+  if (cycleDaysEl) {
+    const daysLeft = Math.max(0, Math.ceil((cycleEnd - now) / (1000*60*60*24)));
+    cycleDaysEl.textContent = `${daysLeft} days left in cycle`;
+  }
+}
+
+function getDesignationTarget() {
+  const desig = (currentUser.designation || currentUser.role || '').toLowerCase();
+  if (desig.includes('mapping')) return 25;
+  return 15;
+}
+
+function updateIncentiveTile(visits, target) {
+  const pct = Math.min(100, Math.round(visits / target * 100));
+  document.getElementById('incentive-bar').style.width = pct + '%';
+  if (pct < 60) {
+    document.getElementById('incentive-tier').textContent = 'Bronze track';
+    document.getElementById('incentive-tier').style.color = '#CD7F32';
+    document.getElementById('incentive-payout').textContent = 'Keep going';
+    document.getElementById('incentive-next').textContent = `${target - visits} more visits to hit target`;
+  } else if (pct < 100) {
+    document.getElementById('incentive-tier').textContent = '🥈 Silver track';
+    document.getElementById('incentive-payout').textContent = 'On track';
+    document.getElementById('incentive-next').textContent = `${target - visits} more to hit Gold`;
+  } else {
+    document.getElementById('incentive-tier').textContent = '🥇 Gold — Target Hit!';
+    document.getElementById('incentive-tier').style.color = 'var(--accent)';
+    document.getElementById('incentive-bar').classList.add('success');
+    document.getElementById('incentive-next').textContent = 'Outstanding work today!';
+  }
+}
+
+// ══════════════════════════════════════════════
+// VISIT LIST RENDER
+// ══════════════════════════════════════════════
+function renderVisitsList(visits) {
+  const el = document.getElementById('visits-list');
+  document.getElementById('visits-count-badge').textContent = `${visits.length} visits`;
+  if (!visits.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text3);font-size:14px;">No visits yet today</div>';
+    return;
+  }
+  el.innerHTML = visits.map(v => `
+    <div class="visit-item" onclick="showVisitDetail(${v.id})">
+      <div class="visit-dot ${v.status === 'completed' ? '' : 'pending'}"></div>
+      <div class="visit-info">
+        <div class="visit-name">${v.customer_name || v.site_address || 'Site Visit'}</div>
+        <div class="visit-addr">${v.site_address || '—'}</div>
+        <div class="visit-meta">
+          <span>${new Date(v.created_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span>
+          ${v.visit_quality_score ? `<span>Quality: ${Math.round(v.visit_quality_score)}%</span>` : ''}
+        </div>
+      </div>
+      ${v.construction_stage ? `<div class="visit-stage">${stageLabel(v.construction_stage)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+async function renderAssignedList() {
+  const today = new Date().toISOString().split('T')[0];
+  const { data } = await sb.from('field_visit_assignments')
+    .select('*').eq('assigned_to_staff_id', currentUser.id)
+    .eq('scheduled_date', today).neq('status','completed').neq('status','cancelled')
+    .order('priority', {ascending: false}).limit(3);
+  
+  const el = document.getElementById('assigned-list');
+  if (!data?.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px 0;color:var(--text3);font-size:13px;">No assignments for today</div>';
+    return;
+  }
+  el.innerHTML = data.map(a => `
+    <div class="visit-item" style="border-left: 3px solid ${a.priority==='urgent'?'var(--danger)':a.priority==='high'?'var(--warning)':'var(--border)'}">
+      <div class="visit-dot assigned"></div>
+      <div class="visit-info">
+        <div class="visit-name">${a.site_name || 'Site Visit'}</div>
+        <div class="visit-addr">${a.site_address || '—'}</div>
+        <div class="visit-meta"><span>${a.priority?.toUpperCase()}</span><span>${a.notes||''}</span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function stageLabel(s) {
+  const map = {
+    foundation:'Foundation', structure:'Structure', brick_work:'Brick Work',
+    plastering:'Plastering', tiling_ready:'Tiling Ready',
+    tiling_in_progress:'Tiling', finishing:'Finishing', handover:'Handover', renovation:'Renovation'
+  };
+  return map[s] || s;
+}
+
+async function showVisitDetail(id) {
+  const { data: v } = await sb.from('field_visits').select('*').eq('id', id).single();
+  if (!v) return;
+  document.getElementById('vd-title').textContent = v.customer_name || 'Site Visit';
+  document.getElementById('vd-body').innerHTML = `
+    <div class="card card-accent">
+      <div class="flex-between">
+        <div style="font-size:13px;color:var(--text2);">Stage</div>
+        <div class="visit-stage">${stageLabel(v.construction_stage || '')}</div>
+      </div>
+      <div class="flex-between mt-8">
+        <div style="font-size:13px;color:var(--text2);">Quality score</div>
+        <div class="mono fw-700 text-accent">${v.visit_quality_score ? Math.round(v.visit_quality_score)+'%' : '—'}</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600;margin-top:12px;">SITE ADDRESS</div>
+    <div style="font-size:14px;">${v.site_address || '—'}</div>
+    ${v.site_contacts?.length ? `
+      <div style="font-size:13px;color:var(--text2);margin:12px 0 6px;font-weight:600;">CONTACTS</div>
+      ${v.site_contacts.map(c => `
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border2);">
+          <div>
+            <div style="font-size:12px;color:var(--accent);">${c.role}</div>
+            <div style="font-weight:600;">${c.name}</div>
+          </div>
+          <a href="tel:${c.phone}" style="color:var(--success);font-size:13px;text-decoration:none;align-self:center;">📞 Call</a>
+        </div>
+      `).join('')}
+    ` : ''}
+    ${v.notes ? `
+      <div style="font-size:13px;color:var(--text2);margin:12px 0 6px;font-weight:600;">NOTES</div>
+      <div style="font-size:14px;color:var(--text);">${v.notes}</div>
+    ` : ''}
+    ${v.next_action_date ? `
+      <div class="alert-banner info mt-12">
+        <span>📅</span> <span>Follow-up: ${v.next_action_date}</span>
+      </div>
+    ` : ''}
+    ${v.ai_analysis ? renderAICard(v) : ''}
+    <button class="btn btn-secondary mt-16" onclick="openFollowupVisit(${v.id})">Log Follow-up Visit</button>
+    <button class="btn btn-primary mt-8" onclick="shareOnWhatsApp(${v.id})">📲 Share on WhatsApp</button>
+  `;
+  openSheet('sheet-visit-detail');
+}
+
+function renderAICard(v) {
+  if (!v.ai_requirements?.length) return '';
+  return `
+    <div class="ai-card mt-12">
+      <div class="ai-header">
+        <span>🤖</span><span class="ai-badge">AI ANALYSIS</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--text3);">${v.ai_stage_detected||''}</span>
+      </div>
+      <div class="ai-req-list">${v.ai_requirements.map(r=>`<div class="ai-req-chip">${r}</div>`).join('')}</div>
+      ${v.ai_estimated_value_min ? `<div class="ai-value-range">₹${lakh(v.ai_estimated_value_min)}L – ₹${lakh(v.ai_estimated_value_max)}L</div>` : ''}
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════
+// PUNCH IN / OUT
+// ══════════════════════════════════════════════
+function isManagerDesig() {
+  const r = ((currentUser?.designation||'') + ' ' + (currentUser?.role||'')).toLowerCase();
+  return r.includes('asm') || r.includes('cluster head') || r.includes('region head');
+}
+
+function openPunchSheet() {
+  if (!currentAttendance) {
+    // ASM and above: simple punch-in, no selfie/odometer needed
+    if (isManagerDesig()) {
+      managerPunchIn();
+      return;
+    }
+    document.getElementById('punch-sheet-title').textContent = 'Punch In — Start Day';
+    document.getElementById('punch-in-form').classList.remove('hidden');
+    document.getElementById('punch-out-form').classList.add('hidden');
+    getCurrentGPS(pos => {
+      lastLocation = pos;
+      document.getElementById('gps-status-text-in').textContent =
+        `Location: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+    });
+  } else if (!currentAttendance.punch_out) {
+    if (isManagerDesig()) { managerPunchOut(); return; }
+    document.getElementById('punch-sheet-title').textContent = 'Punch Out — End Day';
+    document.getElementById('punch-in-form').classList.add('hidden');
+    document.getElementById('punch-out-form').classList.remove('hidden');
+  } else {
+    showToast('Day already ended'); return;
+  }
+  openSheet('sheet-punch');
+}
+
+async function managerPunchIn() {
+  const btn = document.getElementById('punch-btn');
+  btn.disabled = true; btn.textContent = 'Starting…';
+  try {
+    const now = new Date();
+    getCurrentGPS(async pos => { lastLocation = pos; }, () => {});
+    const { data: att, error } = await sb.from('attendance').insert({
+      staff_id: currentUser.id,
+      date: new Date().toISOString(),
+      status: 'present',
+      punch_in: new Date().toLocaleTimeString('en-IN', {hour12:false}),
+      check_in_lat: lastLocation?.coords?.latitude || null,
+      check_in_lng: lastLocation?.coords?.longitude || null,
+      city: currentUser.city || 'Vijayawada'
+    }).select().single();
+    if (error) throw error;
+    currentAttendance = att;
+    document.getElementById('punch-label').textContent = 'Punched in since';
+    document.getElementById('punch-time').textContent = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    btn.textContent = 'Punch Out'; btn.className = 'punch-btn out'; btn.disabled = false;
+    btn.onclick = openPunchSheet;
+    showToast('✅ Day started');
+  } catch(e) { showToast('Error: ' + e.message); btn.disabled = false; btn.textContent = 'Start Day'; }
+}
+
+async function managerPunchOut() {
+  if (!confirm('End your day?')) return;
+  try {
+    await sb.from('attendance').update({
+      punch_out: new Date().toLocaleTimeString('en-IN',{hour12:false})
+    }).eq('id', currentAttendance.id);
+    showToast('✅ Day ended');
+    await loadTodayData();
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+async function doPunchIn() {
+  const selfie = document.getElementById('selfie-capture').files[0];
+  const odoIn = parseFloat(document.getElementById('odo-in').value);
+  const odoPhoto = document.getElementById('odo-in-capture').files[0];
+
+  if (!selfie) { showToast('Please take a selfie first'); return; }
+  if (!odoIn || isNaN(odoIn)) { showToast('Enter your odometer reading'); return; }
+  if (!odoPhoto) { showToast('Please photo your odometer'); return; }
+
+  const btn = document.getElementById('btn-do-punchin');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    const now = new Date();
+    const selfieUrl = await uploadPhoto(selfie, `attendance/${currentUser.id}/${now.toISOString()}_selfie`);
+    const odoUrl = await uploadPhoto(odoPhoto, `attendance/${currentUser.id}/${now.toISOString()}_odo_in`);
+    const fuelRate = await getFuelRate();
+
+    const { data: att, error } = await sb.from('attendance').insert({
+      staff_id: currentUser.id,
+      date: now.toISOString(),
+      status: 'present',
+      punch_in: now.toTimeString().split(' ')[0],
+      check_in_lat: lastLocation?.coords?.latitude,
+      check_in_lng: lastLocation?.coords?.longitude,
+      check_in_selfie_url: selfieUrl,
+      odo_in_reading: odoIn,
+      odo_in_photo_url: odoUrl,
+      fuel_rate_used: fuelRate,
+      city: currentUser.city || 'Vijayawada'
+    }).select().single();
+
+    if (error) throw error;
+    currentAttendance = att;
+
+    // Update UI
+    document.getElementById('punch-label').textContent = 'Punched in since';
+    document.getElementById('punch-time').textContent = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const pbtn = document.getElementById('punch-btn');
+    pbtn.textContent = 'Punch Out'; pbtn.className = 'punch-btn out';
+
+    closeSheet('sheet-punch');
+    showToast('✅ Punched in! Good luck today.');
+  } catch(e) {
+    showToast('Error: ' + e.message);
+  }
+  btn.disabled = false; btn.textContent = 'Start Day';
+}
+
+async function doPunchOut() {
+  const odoOut = parseFloat(document.getElementById('odo-out').value);
+  const odoPhoto = document.getElementById('odo-out-capture').files[0];
+  if (!odoOut || isNaN(odoOut)) { showToast('Enter your final odometer reading'); return; }
+  if (!odoPhoto) { showToast('Please photo your odometer'); return; }
+
+  const btn = document.getElementById('btn-do-punchout');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    const now = new Date();
+    const odoUrl = await uploadPhoto(odoPhoto, `attendance/${currentUser.id}/${now.toISOString()}_odo_out`);
+    const { error } = await sb.from('attendance').update({
+      punch_out: now.toTimeString().split(' ')[0],
+      odo_out_reading: odoOut,
+      odo_out_photo_url: odoUrl,
+      updated_at: now.toISOString()
+    }).eq('id', currentAttendance.id);
+    if (error) throw error;
+
+    const km = odoOut - (currentAttendance.odo_in_reading || 0);
+    const fuel = km * (currentAttendance.fuel_rate_used || 2.5);
+    closeSheet('sheet-punch');
+    showToast(`✅ Day ended! ${km} km · ₹${fuel.toFixed(0)} fuel`);
+    await loadTodayData();
+  } catch(e) { showToast('Error: ' + e.message); }
+  btn.disabled = false; btn.textContent = 'End Day';
+}
+
+function initOdoLiveCalc() {
+  document.getElementById('odo-out').addEventListener('input', () => {
+    const out = parseFloat(document.getElementById('odo-out').value);
+    const inn = currentAttendance?.odo_in_reading || 0;
+    if (out && inn && out > inn) {
+      const km = out - inn;
+      const rate = currentAttendance?.fuel_rate_used || 2.5;
+      document.getElementById('fuel-km-calc').textContent = km + ' km';
+      document.getElementById('fuel-rs-calc').textContent = '₹' + (km * rate).toFixed(0);
+      document.getElementById('fuel-preview-card').style.display = '';
+    }
+  });
+}
+
+// ══════════════════════════════════════════════
+// VISIT FORM — MULTI-STEP
+// ══════════════════════════════════════════════
+function openNewVisitSheet() {
+  console.log('openNewVisitSheet called, currentUser:', currentUser?.name);
+  // Remove any orphaned dynamic sheets
+  document.querySelectorAll('.sheet-backdrop:not(#sheet-punch):not(#sheet-visit):not(#sheet-visit-detail)').forEach(el => {
+    console.log('Removing orphaned sheet:', el.id);
+    el.remove();
+  });
+  if (!currentUser) { showToast('Please sign in first'); return; }
+  try {
+    resetVisitForm();
+    document.getElementById('visit-sheet-title').textContent = 'Log Site Visit';
+    openSheet('sheet-visit');
+    console.log('sheet-visit opened');
+  } catch(e) {
+    console.error('openNewVisitSheet error:', e);
+    showToast('Error: ' + e.message);
+  }
+}
+
+function resetVisitForm() {
+  visitContacts = [];
+  visitPhotos = [];
+  visitPinLat = null; visitPinLng = null;
+  visitProjectType = null;
+  visitCurrentStep = 1;
+  photoCounter = 0;
+  competitorEntries = [];
+  decidedBrands = [];
+  customerRequirements = [];
+  deptFlags = [];
+  roomCounts.beds = 0; roomCounts.baths = 0; roomCounts.floors = 1;
+  roomExtras.clear();
+  renderCompetitorList();
+  renderDecidedBrands();
+  // Safe reset — null-check every element to avoid crashes
+  const safe = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
+  safe('competitor-text', el => el.value = '');
+  safe('room-plot', el => el.value = '');
+  safe('sqft-estimate-box', el => el.style.display = 'none');
+  safe('dept-flag-notice', el => el.style.display = 'none');
+  safe('room-beds', el => el.textContent = '0');
+  safe('room-baths', el => el.textContent = '0');
+  safe('room-floors', el => el.textContent = '1');
+  safe('vs-site-name', el => el.value = '');
+  safe('vs-area', el => el.value = '');
+  safe('vs-city', el => el.value = currentUser?.city || 'Vijayawada');
+  safe('vs-stage', el => el.value = '');
+  safe('vs-sqft', el => el.value = '');
+  safe('vs-notes', el => el.value = '');
+  safe('vs-referral', el => el.value = '');
+  safe('vs-followup', el => el.value = '');
+  safe('contacts-list', el => el.innerHTML = '');
+  safe('site-photo-grid', el => el.innerHTML = '');
+  safe('ai-result-area', el => el.classList.add('hidden'));
+  safe('visit-pin-info', el => el.classList.add('hidden'));
+  document.querySelectorAll('#room-extras .chip').forEach(c=>c.classList.remove('selected'));
+  document.querySelectorAll('#customer-req-chips .chip').forEach(c=>c.classList.remove('selected'));
+  document.querySelectorAll('#project-type-chips .chip').forEach(c=>c.classList.remove('selected'));
+  visitNextStep(1, true);
+  addPhotoSlot();
+  // Set default followup to tomorrow
+  const tmr = new Date(); tmr.setDate(tmr.getDate()+1);
+  document.getElementById('vs-followup').value = tmr.toISOString().split('T')[0];
+}
+
+function visitNextStep(step, silent) {
+  const valid = silent || validateStep(visitCurrentStep);
+  if (!valid) return;
+  [1,2,3,4].forEach(s => {
+    document.getElementById(`visit-step-${s}`).classList.toggle('hidden', s !== step);
+    document.querySelector(`.step-dot[data-step="${s}"]`).style.background = s <= step ? 'var(--accent)' : 'var(--border)';
+  });
+  visitCurrentStep = step;
+  document.querySelector('.sheet-body').scrollTop = 0;
+}
+
+function validateStep(step) {
+  if (step === 1) {
+    if (!visitPinLat) { showToast('Please pin the site location on map'); return false; }
+    if (!document.getElementById('vs-area').value.trim()) { showToast('Enter the area / locality'); return false; }
+    return true;
+  }
+  if (step === 2) {
+    if (!document.getElementById('vs-stage').value) { showToast('Select construction stage'); return false; }
+    return true;
+  }
+  if (step === 3) {
+    if (!document.getElementById('vs-followup').value) { showToast('Set a follow-up date'); return false; }
+    return true;
+  }
+  return true;
+}
+
+// ── Room counters ──
+const roomCounts = { beds: 0, baths: 0, floors: 1 };
+const roomExtras = new Set();
+
+function adjRoom(key, delta) {
+  roomCounts[key] = Math.max(key === 'floors' ? 1 : 0, (roomCounts[key] || 0) + delta);
+  document.getElementById(`room-${key}`).textContent = roomCounts[key];
+  calcSqft();
+}
+
+function toggleRoomExtra(el) {
+  el.classList.toggle('selected');
+  const r = el.dataset.room;
+  roomExtras.has(r) ? roomExtras.delete(r) : roomExtras.add(r);
+  calcSqft();
+}
+
+function calcSqft() {
+  const beds = roomCounts.beds, baths = roomCounts.baths, floors = roomCounts.floors;
+  const plotRaw = document.getElementById('room-plot').value.trim();
+  let est = null, method = '';
+
+  // Method 1: plot × floors
+  if (plotRaw) {
+    const parts = plotRaw.toLowerCase().replace('x','×').split('×').map(p => parseFloat(p.trim()));
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      est = Math.round(parts[0] * parts[1] * floors * 0.6);
+      method = `${plotRaw} plot × ${floors} floor(s) × 0.6 ratio`;
+    }
+  }
+
+  // Method 2: room count estimate
+  if (!est && beds > 0) {
+    const basePerBed = 350; // sqft per bedroom (Indian standard)
+    const base = beds * basePerBed;
+    const extras = (roomExtras.has('living') ? 200 : 0) +
+                   (roomExtras.has('kitchen') ? 120 : 0) +
+                   (roomExtras.has('parking') ? 100 : 0) +
+                   (roomExtras.has('terrace') ? 150 : 0) +
+                   (roomExtras.has('pooja') ? 40 : 0) +
+                   (roomExtras.has('balcony') ? 60 : 0);
+    est = (base + extras) * floors;
+    method = `${beds} BHK + extras × ${floors} floor(s)`;
+  }
+
+  if (est) {
+    document.getElementById('sqft-estimate-box').style.display = '';
+    document.getElementById('sqft-estimate-val').textContent = `~${est.toLocaleString('en-IN')} sqft`;
+    document.getElementById('sqft-estimate-method').textContent = method;
+  }
+}
+
+// ── Competitor entries ──
+let competitorEntries = [];
+function addCompetitorEntry() {
+  const val = document.getElementById('competitor-text').value.trim();
+  if (!val) return;
+  competitorEntries.push(val);
+  document.getElementById('competitor-text').value = '';
+  renderCompetitorList();
+}
+function renderCompetitorList() {
+  document.getElementById('competitor-list').innerHTML = competitorEntries.map((e, i) => `
+    <div style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);
+         border-radius:20px;padding:4px 10px;font-size:12px;">
+      <span>${e}</span>
+      <span onclick="competitorEntries.splice(${i},1);renderCompetitorList();" 
+            style="cursor:pointer;color:var(--text3);font-size:14px;">✕</span>
+    </div>`).join('');
+}
+// Allow Enter key to add
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('competitor-text')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addCompetitorEntry(); }
+  });
+});
+
+// ── Decided brands ──
+let decidedBrands = [];
+function addDecidedBrand() {
+  const id = Date.now();
+  decidedBrands.push({ id, category: '', brand: '' });
+  renderDecidedBrands();
+}
+function renderDecidedBrands() {
+  document.getElementById('decided-brands-list').innerHTML = decidedBrands.map(b => `
+    <div style="display:flex;gap:8px;align-items:center;">
+      <select class="form-select" style="flex:1;padding:9px 10px;font-size:13px;"
+              onchange="updateBrand(${b.id},'category',this.value)">
+        <option value="">Category…</option>
+        <option value="Tiles">Tiles</option><option value="Granite">Granite</option>
+        <option value="Sanitaryware">Sanitaryware</option><option value="CP Fittings">CP Fittings</option>
+        <option value="Paints">Paints</option><option value="Plywood">Plywood</option>
+        <option value="Pipes">Pipes</option><option value="Electrical">Electrical</option>
+      </select>
+      <input class="form-input" style="flex:1;padding:9px 10px;font-size:13px;" placeholder="Brand name"
+             value="${b.brand}" oninput="updateBrand(${b.id},'brand',this.value)">
+      <button onclick="decidedBrands=decidedBrands.filter(x=>x.id!==${b.id});renderDecidedBrands();"
+              style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;">✕</button>
+    </div>`).join('');
+}
+function updateBrand(id, field, val) {
+  const b = decidedBrands.find(x => x.id === id);
+  if (b) b[field] = val;
+}
+
+// ── Customer requirements chips ──
+let customerRequirements = [];
+let deptFlags = [];
+
+function initChips() {
+  document.getElementById('project-type-chips').addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if (!chip) return;
+    document.querySelectorAll('#project-type-chips .chip').forEach(c=>c.classList.remove('selected'));
+    chip.classList.add('selected');
+    visitProjectType = chip.dataset.val;
+  });
+
+  document.getElementById('customer-req-chips').addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if (!chip) return;
+    chip.classList.toggle('selected');
+    customerRequirements = [...document.querySelectorAll('#customer-req-chips .chip.selected')].map(c => c.dataset.req);
+    deptFlags = [...new Set([...document.querySelectorAll('#customer-req-chips .chip.selected')].map(c => c.dataset.dept))];
+    // Show dept flag notice
+    const specialDepts = ['Interior','Projects','Furniture','Vendor'];
+    const flagged = deptFlags.filter(d => specialDepts.includes(d));
+    const notice = document.getElementById('dept-flag-notice');
+    if (flagged.length) {
+      notice.style.display = '';
+      document.getElementById('dept-flag-list').textContent = flagged.join(', ');
+    } else {
+      notice.style.display = 'none';
+    }
+  });
+}
+
+// ── Contacts ──
+function addContact(role) {
+  const id = Date.now();
+  visitContacts.push({ id, role, name:'', phone:'', whatsapp:'' });
+  renderContactsList();
+}
+
+function renderContactsList() {
+  document.getElementById('contacts-list').innerHTML = visitContacts.map(c => `
+    <div class="contact-row" id="contact-${c.id}">
+      <div class="contact-role-tag">${c.role}</div>
+      <button class="contact-del" onclick="removeContact(${c.id})">✕</button>
+      <div class="contact-fields">
+        <input class="form-input" style="font-size:13px;padding:9px 10px;" placeholder="Name"
+               value="${c.name}" oninput="updateContact(${c.id},'name',this.value)">
+        <input class="form-input" style="font-size:13px;padding:9px 10px;" placeholder="Phone" 
+               type="tel" inputmode="numeric" maxlength="10"
+               value="${c.phone}" oninput="updateContact(${c.id},'phone',this.value)">
+      </div>
+      <input class="form-input" style="font-size:13px;padding:9px 10px;margin-top:6px;" placeholder="WhatsApp (if different)"
+             type="tel" inputmode="numeric" maxlength="10"
+             value="${c.whatsapp}" oninput="updateContact(${c.id},'whatsapp',this.value)">
+    </div>
+  `).join('');
+}
+
+function updateContact(id, field, val) {
+  const c = visitContacts.find(x => x.id === id);
+  if (c) c[field] = val;
+}
+function removeContact(id) {
+  visitContacts = visitContacts.filter(x => x.id !== id);
+  renderContactsList();
+}
+
+// ── Photos ──
+function addPhotoSlot() {
+  const grid = document.getElementById('site-photo-grid');
+  const id = ++photoCounter;
+  const slot = document.createElement('div');
+  slot.className = 'photo-slot';
+  slot.id = `photo-slot-${id}`;
+  slot.innerHTML = `
+    <span class="photo-icon">📷</span>
+    <span class="photo-label">Tap to capture</span>
+    <input type="file" id="photo-input-${id}" accept="image/*" capture="environment"
+           onchange="handlePhotoCapture(${id}, this)">
+  `;
+  slot.onclick = () => document.getElementById(`photo-input-${id}`).click();
+  grid.appendChild(slot);
+}
+
+function handlePhotoCapture(id, input) {
+  const file = input.files[0]; if (!file) return;
+  // Update quality score display
+  setTimeout(() => {
+    const { score } = computeQualityScore();
+    const btn = document.getElementById('quality-score-btn');
+    if (btn) { btn.textContent = `Quality: ${score}%`; btn.style.color = score >= 100 ? 'var(--success)' : score >= 60 ? 'var(--accent)' : 'var(--danger)'; }
+  }, 100);
+  const slot = document.getElementById(`photo-slot-${id}`);
+  const url = URL.createObjectURL(file);
+  slot.innerHTML = `
+    <img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">
+    <div class="photo-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;" 
+         onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0">
+      <span onclick="removePhotoSlot(${id})" style="font-size:24px;cursor:pointer;">🗑️</span>
+    </div>
+  `;
+  visitPhotos.push({ slotId: id, file, url });
+}
+
+function removePhotoSlot(id) {
+  document.getElementById(`photo-slot-${id}`)?.remove();
+  visitPhotos = visitPhotos.filter(p => p.slotId !== id);
+}
+
+// ── Location for visit map ──
+function getCurrentLocationForVisit() {
+  getCurrentGPS(pos => {
+    visitPinLat = pos.coords.latitude;
+    visitPinLng = pos.coords.longitude;
+    document.getElementById('visit-pin-info').classList.remove('hidden');
+    document.getElementById('visit-pin-addr').textContent = 
+      `${visitPinLat.toFixed(5)}, ${visitPinLng.toFixed(5)} (GPS)`;
+    document.getElementById('visit-map').innerHTML = `
+      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:var(--success);">
+        <div style="font-size:32px;">📍</div>
+        <div style="font-size:13px;">Location captured</div>
+        <div style="font-size:11px;color:var(--text3);">${visitPinLat.toFixed(4)}, ${visitPinLng.toFixed(4)}</div>
+      </div>
+    `;
+  }, () => showToast('Could not get location — check GPS permissions'));
+}
+
+// ── Submit visit ──
+// ── Territory check ──
+async function checkTerritory(lat, lng) {
+  if (!currentUser?.id) return { outsideTerritory: false };
+  try {
+    // Get this rep's territories
+    const terrs = await sb.from('territories')
+      .select('id,name,polygon_geojson,staff_id')
+      .eq('staff_id', currentUser.id).eq('active', true);
+    
+    if (!terrs.data?.length) return { outsideTerritory: false }; // no territory set = no restriction
+    
+    // Check if point is inside any territory polygon
+    for (const t of terrs.data) {
+      if (pointInPolygon(lat, lng, t.polygon_geojson?.geometry?.coordinates?.[0])) {
+        return { outsideTerritory: false, territory: t };
+      }
+    }
+    return { outsideTerritory: true, territories: terrs.data };
+  } catch(e) {
+    return { outsideTerritory: false }; // fail open — network error shouldn't block work
+  }
+}
+
+function pointInPolygon(lat, lng, coords) {
+  // Ray casting algorithm
+  if (!coords?.length) return true;
+  let inside = false;
+  for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+    const [xi, yi] = coords[i]; // [lng, lat]
+    const [xj, yj] = coords[j];
+    const intersect = ((yi > lat) !== (yj > lat)) &&
+      (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function showCrossTerritoryPrompt(check) {
+  const existing = document.getElementById('sheet-cross-territory');
+  if (existing) existing.remove();
+
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet-backdrop';
+  sheet.id = 'sheet-cross-territory';
+  sheet.innerHTML = `
+    <div class="sheet" style="padding-bottom:env(safe-area-inset-bottom);">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Outside Your Territory ⚠️</div>
+        <button class="sheet-close" onclick="document.getElementById('sheet-cross-territory').classList.remove('open');">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:40px;margin-bottom:10px;">📍</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:6px;">This site is outside your assigned territory</div>
+          <div style="font-size:13px;color:var(--text2);">Your manager will be notified. Please provide a reason to continue.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Reason for visiting outside territory <span class="req">*</span></label>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+            ${['Customer specifically requested me','Covering for absent colleague','High-value lead — manager approved','Site is near territory boundary','Other'].map(r=>`
+              <div onclick="selectCTReason(this,'${r}')"
+                style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);
+                border-radius:8px;font-size:13px;cursor:pointer;transition:all .15s;"
+                data-reason="${r}">${r}</div>`).join('')}
+          </div>
+          <input class="form-input" id="ct-other-reason" placeholder="Or type your reason…" style="display:none;">
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="document.getElementById('sheet-cross-territory').classList.remove('open');">
+            ← Go back
+          </button>
+          <button class="btn btn-primary" id="btn-ct-submit" onclick="submitWithCrossTerritory()" disabled>
+            Submit with reason
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(sheet);
+  setTimeout(() => sheet.classList.add('open'), 10);
+  sheet.addEventListener('click', e => { if (e.target === sheet) sheet.classList.remove('open'); });
+}
+
+let selectedCTReason = null;
+
+function selectCTReason(el, reason) {
+  document.querySelectorAll('[data-reason]').forEach(d => {
+    d.style.background = 'var(--surface2)';
+    d.style.borderColor = 'var(--border)';
+    d.style.color = 'var(--text)';
+  });
+  el.style.background = 'var(--accent-soft)';
+  el.style.borderColor = 'var(--accent)';
+  el.style.color = 'var(--accent)';
+  selectedCTReason = reason;
+  document.getElementById('ct-other-reason').style.display = reason === 'Other' ? '' : 'none';
+  document.getElementById('btn-ct-submit').disabled = false;
+}
+
+async function submitWithCrossTerritory() {
+  const reason = selectedCTReason === 'Other'
+    ? document.getElementById('ct-other-reason').value.trim() || 'Other'
+    : selectedCTReason;
+  if (!reason) { showToast('Please select a reason'); return; }
+  document.getElementById('sheet-cross-territory').classList.remove('open');
+  setTimeout(() => document.getElementById('sheet-cross-territory')?.remove(), 300);
+  await submitVisit(true, reason);
+}
+
+function showQualityGate(score, checks) {
+  const missing = checks.filter(c => !c.met);
+  const existing = document.getElementById('sheet-quality-gate');
+  if (existing) existing.remove();
+
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet-backdrop';
+  sheet.id = 'sheet-quality-gate';
+
+  const missingRows = missing.map(c => `
+    <div style="display:flex;align-items:center;justify-content:space-between;
+         padding:12px 0;border-bottom:1px solid var(--border2);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">❌</span>
+        <div>
+          <div style="font-size:14px;font-weight:500;">${c.label}</div>
+          <div style="font-size:12px;color:var(--text3);">+${c.pts} points</div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  const doneRows = checks.filter(c => c.met).map(c => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;opacity:.6;">
+      <span style="font-size:16px;">✅</span>
+      <div style="font-size:13px;color:var(--text2);">${c.label}</div>
+    </div>`).join('');
+
+  const ptsNeeded = 90 - score;
+  sheet.innerHTML = `
+    <div class="sheet" style="padding-bottom:env(safe-area-inset-bottom);">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Boost Your Score 🎯</div>
+        <button class="sheet-close" onclick="document.getElementById('sheet-quality-gate').classList.remove('open');">✕</button>
+      </div>
+      <div class="sheet-body">
+        <!-- Score ring -->
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="position:relative;display:inline-block;">
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="var(--border)" stroke-width="8"/>
+              <circle cx="50" cy="50" r="42" fill="none"
+                stroke="${score >= 90 ? 'var(--success)' : score >= 60 ? 'var(--accent)' : 'var(--danger)'}"
+                stroke-width="8" stroke-linecap="round"
+                stroke-dasharray="${2 * Math.PI * 42}"
+                stroke-dashoffset="${2 * Math.PI * 42 * (1 - score/100)}"
+                transform="rotate(-90 50 50)"/>
+              <text x="50" y="46" text-anchor="middle" fill="var(--text)"
+                font-size="20" font-weight="700" font-family="JetBrains Mono,monospace">${score}%</text>
+              <text x="50" y="62" text-anchor="middle" fill="var(--text3)" font-size="10">score</text>
+            </svg>
+          </div>
+          <div style="margin-top:10px;">
+            ${score < 90 ? `
+              <div style="font-size:15px;font-weight:600;color:var(--accent);">
+                Add ${ptsNeeded} more points to qualify for incentives!
+              </div>
+              <div style="font-size:12px;color:var(--text2);margin-top:4px;">
+                Min 90% required for incentive qualification
+              </div>` : `
+              <div style="font-size:15px;font-weight:600;color:var(--success);">
+                Great work! You qualify for incentives 🎉
+              </div>`}
+          </div>
+        </div>
+
+        ${missing.length ? `
+          <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">
+            WHAT'S MISSING
+          </div>
+          ${missingRows}
+          <div style="margin-top:16px;font-size:12px;color:var(--text3);">
+            Go back and complete these to hit 90%
+          </div>` : ''}
+
+        ${doneRows ? `
+          <div style="margin-top:16px;">
+            ${doneRows}
+          </div>` : ''}
+
+        <div class="btn-row" style="margin-top:20px;">
+          <button class="btn btn-secondary" onclick="document.getElementById('sheet-quality-gate').classList.remove('open');">
+            ← Complete it
+          </button>
+          <button class="btn btn-ghost" style="font-size:13px;color:var(--text3);"
+            onclick="document.getElementById('sheet-quality-gate').classList.remove('open');submitVisit(true);">
+            Submit anyway (${score}%)
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(sheet);
+  setTimeout(() => sheet.classList.add('open'), 10);
+  sheet.addEventListener('click', e => { if (e.target === sheet) sheet.classList.remove('open'); });
+}
+
+async function submitVisit(forceSubmit = false, crossTerritoryReason = null) {
+  if (!visitPhotos.length) { showToast('Add at least 1 site photo'); return; }
+
+  // Quality gate — min 90% for incentive qualification
+  const { score, checks } = computeQualityScore();
+  if (score < 90 && !forceSubmit) {
+    showQualityGate(score, checks);
+    return;
+  }
+
+  // Territory boundary check
+  if (visitPinLat && !crossTerritoryReason) {
+    const territoryCheck = await checkTerritory(visitPinLat, visitPinLng);
+    if (territoryCheck.outsideTerritory) {
+      showCrossTerritoryPrompt(territoryCheck);
+      return;
+    }
+  }
+
+  const btn = document.getElementById('btn-submit-visit');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    // Upload photos
+    const photoUrls = [];
+    for (const p of visitPhotos) {
+      const url = await uploadPhoto(p.file, `field_visits/${currentUser.id}/${Date.now()}_${p.slotId}`);
+      photoUrls.push({ slotId: p.slotId, url });
+    }
+
+    const desig = currentUser.designation || currentUser.role || 'Field Executive';
+    const visitData = {
+      staff_id: currentUser.id,
+      executive_name: currentUser.name,
+      site_address: `${document.getElementById('vs-area').value}, ${document.getElementById('vs-city').value}`,
+      site_lat: visitPinLat, site_lng: visitPinLng,
+      customer_name: document.getElementById('vs-site-name').value || null,
+      check_in_at: new Date().toISOString(),
+      check_in_lat: visitPinLat, check_in_lng: visitPinLng,
+      status: 'completed',
+      city: document.getElementById('vs-city').value,
+      construction_stage: document.getElementById('vs-stage').value,
+      project_type: visitProjectType,
+      estimated_sqft: parseFloat(document.getElementById('vs-sqft').value) || estimateSqft() || null,
+      estimated_value: parseFloat(document.getElementById('vs-sqft')?.dataset?.estimatedValue) || null,
+      site_contacts: visitContacts.filter(c => c.name || c.phone),
+      site_photos: photoUrls,
+      competitor_products: competitorEntries,
+      competitor_details: decidedBrands.filter(b => b.category || b.brand),
+      customer_requirements: customerRequirements,
+      dept_flags: deptFlags,
+      room_count: { beds: roomCounts.beds, baths: roomCounts.baths, floors: roomCounts.floors, extras: [...roomExtras] },
+      plot_size: document.getElementById('room-plot').value.trim() || null,
+      notes: document.getElementById('vs-notes').value,
+      referral_source: document.getElementById('vs-referral').value,
+      next_action_date: document.getElementById('vs-followup').value,
+      next_action: 'follow_up',
+      designation_at_visit: desig,
+      visit_type: desig.toLowerCase().includes('mapping') ? 'mapping' : desig.toLowerCase().includes('team leader') ? 'tl' : 'field_exec',
+      visit_quality_score: computeQualityScore().score,
+      quality_breakdown: computeQualityScore().checks,
+      cross_territory: !!crossTerritoryReason,
+      cross_territory_reason: crossTerritoryReason || null
+    };
+
+    const { data: visit, error } = await sb.from('field_visits').insert(visitData).select().single();
+    if (error) throw error;
+
+    // Create cross-department tasks for flagged departments
+    if (deptFlags.length > 0) {
+      await createDeptTasks(visit.id, visitData, deptFlags).catch(() => {});
+    }
+
+    // Visit saved — go home immediately, AI runs in background
+    closeSheet('sheet-visit');
+    showTab('home');
+    await loadTodayData();
+    const deptMsg = deptFlags.length ? ` + ${deptFlags.length} dept task(s) created` : '';
+    showToast('✅ Visit saved! AI analysing photos…' + deptMsg);
+    if (photoUrls.length > 0) {
+      runAIAnalysis(visit.id, photoUrls.map(p=>p.url), visitData).catch(() => {});
+    }
+    // Always generate follow-up questions (even without photos)
+    generateFollowupQuestions(visit.id).catch(() => {});
+  } catch(e) {
+    showToast('Error: ' + e.message);
+    btn.disabled = false; btn.textContent = 'Submit Visit';
+  }
+}
+
+function estimateSqft() {
+  const beds = roomCounts.beds, floors = roomCounts.floors;
+  const plotRaw = document.getElementById('room-plot')?.value?.trim();
+  if (plotRaw) {
+    const parts = plotRaw.toLowerCase().replace('x','×').split('×').map(p => parseFloat(p.trim()));
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) return Math.round(parts[0]*parts[1]*floors*0.6);
+  }
+  if (beds > 0) {
+    const extras = (roomExtras.has('living')?200:0)+(roomExtras.has('kitchen')?120:0)+(roomExtras.has('parking')?100:0)+(roomExtras.has('terrace')?150:0)+(roomExtras.has('pooja')?40:0)+(roomExtras.has('balcony')?60:0);
+    return (beds*350+extras)*floors;
+  }
+  return null;
+}
+
+function computeQualityScore() {
+  const checks = [
+    { key:'location', label:'Site pinned on map', pts:20, met: !!visitPinLat },
+    { key:'stage', label:'Construction stage', pts:20, met: !!document.getElementById('vs-stage').value },
+    { key:'contact', label:'At least 1 contact with phone', pts:20, met: visitContacts.filter(c=>c.phone).length >= 1 },
+    { key:'photos', label:'Minimum 2 site photos', pts:20, met: visitPhotos.length >= 2 },
+    { key:'followup', label:'Follow-up date set', pts:10, met: !!document.getElementById('vs-followup').value },
+    { key:'notes', label:'Notes / conversation captured', pts:10, met: document.getElementById('vs-notes').value.length > 20 },
+  ];
+  const score = checks.reduce((s, c) => s + (c.met ? c.pts : 0), 0);
+  return { score, checks };
+}
+
+function showQualityBreakdown() {
+  const { score, checks } = computeQualityScore();
+  const missing = checks.filter(c => !c.met);
+  if (!missing.length) return; // 100% — nothing to show
+  const msg = missing.map(c => `❌ ${c.label} (+${c.pts}pts)`).join('\n');
+  showToast(`Score: ${score}% — missing:\n${missing.map(c=>c.label).join(', ')}`, 6000);
+}
+
+// ── Department Task Creation ──
+async function createDeptTasks(visitId, visitData, flags) {
+  const deptLabelMap = {
+    'Tiles': 'Tiles / Granite / Marble', 'Sanitaryware': 'Sanitaryware / CP Fittings',
+    'Paints': 'Paints', 'Plywood': 'Plywood / Laminates', 'Pipes': 'PVC Pipes',
+    'Electrical': 'Electrical Wires', 'Waterproofing': 'Waterproofing',
+    'Interior': 'Interior Design', 'Projects': 'Construction / Architect',
+    'Furniture': 'Modular Kitchen / Furniture', 'Vendor': 'False Ceiling / Gypsum',
+  };
+  const tasks = flags.map(dept => ({
+    visit_id: visitId,
+    department: dept,
+    title: `Field Lead — ${deptLabelMap[dept] || dept}`,
+    description: `Site: ${visitData.site_address || ''}. Stage: ${visitData.construction_stage || ''}. Rep: ${currentUser.name}. Customer needs: ${deptLabelMap[dept]}.`,
+    status: 'open',
+    priority: ['Interior','Projects','Furniture'].includes(dept) ? 'high' : 'normal',
+    type: 'field_lead',
+    follow_up_date: visitData.next_action_date || null,
+    created_by: currentUser.name,
+  }));
+  if (tasks.length) {
+    await sb.from('tasks').insert(tasks);
+  }
+}
+
+// ── AI Analysis ──
+async function generateFollowupQuestions(visitId) {
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/field-followup-questions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+      body: JSON.stringify({ parentVisitId: visitId, staffId: currentUser.id })
+    });
+  } catch(e) { /* silently fail */ }
+}
+
+async function runAIAnalysis(visitId, photoUrls, visitData) {
+  const btn = document.getElementById('btn-submit-visit');
+  try {
+
+    // Call vision API via edge function
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-site-analysis`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+      body: JSON.stringify({
+        visitId,
+        photoUrls,
+        context: {
+          stage: visitData.construction_stage,
+          projectType: visitData.project_type,
+          sqft: visitData.estimated_sqft,
+          city: visitData.city
+        }
+      })
+    });
+    
+    if (!res.ok) throw new Error('AI service error');
+    const ai = await res.json();
+
+    // Update visit with AI results
+    await sb.from('field_visits').update({
+      ai_analysis: ai,
+      ai_stage_detected: ai.stage_detected,
+      ai_requirements: ai.requirements,
+      ai_estimated_value_min: ai.estimated_value_min,
+      ai_estimated_value_max: ai.estimated_value_max,
+      ai_product_suggestions: []
+    }).eq('id', visitId);
+
+    // Show AI result in form
+    document.getElementById('ai-result-area').classList.remove('hidden');
+    document.getElementById('ai-req-chips').innerHTML = (ai.requirements||[]).map(r=>`<div class="ai-req-chip">${r}</div>`).join('');
+    document.getElementById('ai-value-range').textContent = ai.estimated_value_min ? 
+      `₹${lakh(ai.estimated_value_min)}L – ₹${lakh(ai.estimated_value_max)}L` : '—';
+    document.getElementById('ai-stage-detected').textContent = ai.stage_detected || '';
+    document.getElementById('ai-suggestion-text').textContent = ai.suggestion || '';
+
+    // AI done — show toast, user already on home screen
+    showToast('🤖 AI analysis complete');
+  } catch(e) {
+    // AI failed silently — visit saved, user on home screen
+    console.warn('AI analysis failed:', e.message);
+  }
+}
+
+async function openFollowupVisit(parentId) {
+  closeSheet('sheet-visit-detail');
+  const { data: parent } = await sb.from('field_visits').select('*').eq('id', parentId).single();
+  if (!parent) return;
+  resetVisitForm();
+
+  // Pre-fill from parent
+  if (parent.site_lat) { visitPinLat = parent.site_lat; visitPinLng = parent.site_lng; }
+  if (parent.site_contacts) { visitContacts = parent.site_contacts.map(c=>({...c, id: Date.now()+Math.random()})); renderContactsList(); }
+  const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  safeSet('vs-area', parent.site_address);
+  safeSet('vs-city', parent.city);
+  safeSet('vs-stage', parent.construction_stage);
+  safeSet('vs-site-name', parent.customer_name);
+  document.getElementById('visit-sheet-title').textContent = 'Follow-up Visit';
+
+  if (visitPinLat) {
+    document.getElementById('visit-pin-info').classList.remove('hidden');
+    document.getElementById('visit-pin-addr').textContent = 'Revisiting: ' + parent.site_address;
+    document.getElementById('visit-map').innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--success);flex-direction:column;gap:4px;"><div style="font-size:32px;">📍</div><div style="font-size:13px;">Previous location reused</div></div>';
+  }
+
+  openSheet('sheet-visit');
+
+  // Load AI follow-up questions in background
+  loadFollowupQuestions(parentId);
+}
+
+async function loadFollowupQuestions(parentId) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/functions/v1/field-followup-questions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({ parentVisitId: parentId, staffId: currentUser.id })
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.questions?.length) return;
+
+    // Show AI questions banner in visit form
+    showFollowupQuestionsBanner(data);
+  } catch(e) { /* silently fail */ }
+}
+
+function dismissFollowupBanner() {
+  const el = document.getElementById('followup-questions-banner');
+  if (el) el.remove();
+}
+
+function showFollowupQuestionsBanner(data) {
+  const existing = document.getElementById('followup-questions-banner');
+  if (existing) existing.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'followup-questions-banner';
+  banner.style.cssText = 'background:linear-gradient(135deg,rgba(245,166,35,.1),rgba(34,197,94,.08));border:1px solid rgba(245,166,35,.3);border-radius:12px;padding:14px;margin-bottom:16px;';
+  banner.innerHTML =
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
+      '<span style="font-size:18px;">🤖</span>' +
+      '<div style="font-size:13px;font-weight:700;color:var(--accent);">AI FOLLOW-UP GUIDE</div>' +
+    '</div>' +
+    (data.priority_action ? '<div style="font-size:13px;font-weight:600;margin-bottom:10px;padding:8px 10px;background:rgba(245,166,35,.1);border-radius:8px;">🎯 ' + data.priority_action + '</div>' : '') +
+    (data.red_flags?.length ? '<div style="font-size:12px;color:var(--danger);margin-bottom:10px;">⚠️ ' + data.red_flags.join(' · ') + '</div>' : '') +
+    '<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Questions to ask this visit</div>' +
+    data.questions.map((q, i) =>
+      '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">' +
+        '<div style="font-size:13px;font-weight:500;">' + (i+1) + '. ' + q.question + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:3px;">' + q.why + '</div>' +
+      '</div>'
+    ).join('') +
+    '<button onclick="dismissFollowupBanner()" style="margin-top:10px;width:100%;padding:8px;border-radius:8px;background:none;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-size:12px;">Dismiss</button>';
+
+  // Insert at top of visit form body
+  const formBody = document.getElementById('visit-form-body');
+  if (formBody) formBody.insertBefore(banner, formBody.firstChild);
+}
+
+// ══════════════════════════════════════════════
+// LOCATION TRACKING
+// ══════════════════════════════════════════════
+async function startLocationTracking() {
+  if (!navigator.geolocation) return;
+
+  // Request notification permission with explanation first
+  if ('Notification' in window && Notification.permission === 'default') {
+    await requestNotificationPermission();
+  } else if (Notification.permission === 'granted') {
+    // Already granted — show battery setup tip if not done yet
+    if (!localStorage.getItem('vw_field_battery_tip_shown')) {
+      showBatterySetupTip();
+    }
+  }
+
+  // Initial ping immediately
+  pingLocation();
+
+  // Tell service worker to start background tracking loop
+  if (navigator.serviceWorker?.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'START_TRACKING',
+      staffId: currentUser.id,
+      name: currentUser.name,
+      anonKey: SUPABASE_ANON,
+      supabaseUrl: SUPABASE_URL,
+      attendanceId: currentAttendance?.id || null,
+      city: currentUser.city || 'Vijayawada',
+      visits: 0,
+      km: 0
+    });
+  }
+
+  // Keep setInterval as fallback (when SW not yet active)
+  if (locPingTimer) clearInterval(locPingTimer);
+  locPingTimer = setInterval(pingLocation, LOC_INTERVAL_MS);
+}
+
+function updateTrackingNotification(visits, km) {
+  if (navigator.serviceWorker?.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'UPDATE_STATS',
+      visits, km,
+      name: currentUser?.name || 'Field'
+    });
+  }
+}
+
+function pingLocation() {
+  if (!currentUser || !currentAttendance) return;
+  getCurrentGPS(async pos => {
+    lastLocation = pos;
+    const speed = pos.coords.speed ? pos.coords.speed * 3.6 : null;
+    const isMoving = speed !== null ? speed > 2 : null;
+    const payload = {
+      staff_id: currentUser.id,
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      accuracy_m: pos.coords.accuracy,
+      is_moving: isMoving,
+      speed_kmh: speed,
+      recorded_at: new Date().toISOString(),
+      city: currentUser.city || 'Vijayawada',
+      attendance_id: currentAttendance?.id || null
+    };
+    // Try via service worker (survives tab backgrounding on Android)
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'LOCATION_PING',
+        ...payload,
+        staffId: currentUser.id,
+        anonKey: SUPABASE_ANON,
+        supabaseUrl: SUPABASE_URL,
+        attendanceId: currentAttendance?.id || null,
+        // Cache last known position for closed-app fallback
+        lastLat: pos.coords.latitude,
+        lastLng: pos.coords.longitude,
+        lastAccuracy: pos.coords.accuracy,
+      });
+    } else {
+      // Direct insert fallback
+      await sb.from('field_location_log').insert(payload).catch(() => {});
+    }
+  }, () => {});
+}
+
+// Listen for messages from service worker
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'REQUEST_LOCATION') {
+      pingLocation();
+    }
+    if (e.data?.type === 'PUNCH_OUT_FROM_NOTIFICATION') {
+      // Rep tapped "Punch Out" on notification
+      if (currentAttendance && !currentAttendance.punch_out) {
+        openPunchSheet();
+        showToast('Punch out from notification');
+      }
+    }
+  });
+}
+
+function stopLocationTracking() {
+  if (locPingTimer) { clearInterval(locPingTimer); locPingTimer = null; }
+  if (locationWatcher) { navigator.geolocation.clearWatch(locationWatcher); locationWatcher = null; }
+  // Tell SW to stop background tracking and dismiss notification
+  if (navigator.serviceWorker?.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'STOP_TRACKING' });
+  }
+}
+
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
+function getCurrentGPS(success, fail) {
+  if (!navigator.geolocation) { if (fail) fail(new Error('GPS not available')); return; }
+  navigator.geolocation.getCurrentPosition(success, fail || (()=>{}), {
+    enableHighAccuracy: true, timeout: 15000, maximumAge: 30000
+  });
+}
+
+async function uploadPhoto(file, path) {
+  if (!file) return null;
+  // Compress before upload
+  const compressed = await compressImage(file, 0.7, 1200);
+  const { data, error } = await sb.storage.from('field-media').upload(
+    path + '.jpg', compressed, { contentType: 'image/jpeg', upsert: true }
+  );
+  if (error) throw error;
+  const { data: urlData } = sb.storage.from('field-media').getPublicUrl(path + '.jpg');
+  return urlData.publicUrl;
+}
+
+function compressImage(file, quality, maxWidth) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  });
+}
+
+function capturePhoto(inputId, previewId) {
+  document.getElementById(inputId).click();
+}
+
+function previewPhoto(input, previewId, placeholderId) {
+  const file = input.files[0]; if (!file) return;
+  const preview = document.getElementById(previewId);
+  const placeholder = document.getElementById(placeholderId);
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+  if (placeholder) placeholder.style.display = 'none';
+}
+
+async function getFuelRate() {
+  const desig = currentUser.designation || currentUser.role || 'Field Executive';
+  const { data } = await sb.from('field_incentive_rules')
+    .select('fuel_rate_per_km').eq('designation', desig).single();
+  return data?.fuel_rate_per_km || 2.5;
+}
+
+function shareOnWhatsApp(visitId) {
+  const url = `https://wa.me/?text=${encodeURIComponent(`V Wholesale Field Visit Report — ${currentUser.name}\nDate: ${new Date().toLocaleDateString('en-IN')}\nFor more details contact your V Wholesale representative.`)}`;
+  window.open(url, '_blank');
+}
+
+function lakh(n) { return n ? (n / 100000).toFixed(1) : '—'; }
+
+async function signOut() {
+  if (!confirm('Sign out? You will need OTP to sign in again.')) return;
+  stopLocationTracking();
+  currentUser = null; currentAttendance = null;
+  localStorage.removeItem('vw_field_staff');
+  showScreen('screen-login');
+  document.getElementById('input-phone').value = '';
+  document.getElementById('login-otp-step').classList.add('hidden');
+  document.getElementById('login-phone-step').classList.remove('hidden');
+}
+
+// ══════════════════════════════════════════════
+// UI UTILS
+// ══════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showTab(tab) {
+  ['home','visits','map','team','profile'].forEach(t => {
+    const tabEl = document.getElementById(`tab-${t}`);
+    if (tabEl) tabEl.classList.toggle('hidden', t !== tab);
+    document.querySelector(`.nav-item[data-tab="${t}"]`)?.classList.toggle('active', t === tab);
+  });
+  if (tab === 'team') loadTeamData();
+}
+
+function openSheet(id) { document.getElementById(id).classList.add('open'); }
+function closeSheet(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.sheet-backdrop').forEach(b => {
+  b.addEventListener('click', e => { if (e.target === b) b.classList.remove('open'); });
+});
+
+let toastTimer;
+function showToast(msg, duration=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.transform = 'translateY(0)'; t.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    t.style.transform = 'translateY(20px)'; t.style.opacity = '0';
+  }, duration);
+}
+
+// Global error handler — catches Android low memory and other OS errors
+window.addEventListener('error', e => {
+  const msg = e?.message || '';
+  if (msg.toLowerCase().includes('memory') || msg.toLowerCase().includes('quota')) {
+    showToast('Low memory detected — please close other apps and try again', 5000);
+    e.preventDefault();
+  }
+});
+
+window.addEventListener('unhandledrejection', e => {
+  const msg = String(e?.reason?.message || e?.reason || '');
+  if (msg.toLowerCase().includes('memory') || msg.toLowerCase().includes('quota')) {
+    showToast('Low memory — close other apps and retry', 5000);
+    e.preventDefault();
+  }
+});
+
+function initClockTick() {
+  const update = () => {
+    const now = new Date();
+    document.getElementById('hdr-time').textContent = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  };
+  update();
+  setInterval(update, 30000);
+}
+
+// ── PWA: Service Worker + Install Prompt ──
+let deferredInstallPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/field-sw.js')
+      .then(async reg => {
+        // Wait for SW to be active
+        if (reg.installing) {
+          await new Promise(resolve => {
+            reg.installing.addEventListener('statechange', e => {
+              if (e.target.state === 'activated') resolve();
+            });
+          });
+        }
+        // Periodic background sync (Chrome Android)
+        if ('periodicSync' in reg) {
+          try {
+            const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+            if (status.state === 'granted') {
+              await reg.periodicSync.register('field-location', { minInterval: 2 * 60 * 1000 });
+            }
+          } catch(e) { /* not supported */ }
+        }
+        // If already logged in and punched in, restart SW tracking
+        if (currentUser && currentAttendance && !currentAttendance.punch_out) {
+          navigator.serviceWorker.controller?.postMessage({
+            type: 'START_TRACKING',
+            staffId: currentUser.id,
+            name: currentUser.name,
+            anonKey: SUPABASE_ANON,
+            supabaseUrl: SUPABASE_URL,
+            attendanceId: currentAttendance?.id || null,
+            city: currentUser.city || 'Vijayawada',
+          });
+        }
+      })
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
+
+// Capture install prompt for Android Chrome "Add to Home Screen"
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Show install banner after login
+  showInstallBanner();
+});
+
+function showInstallBanner() {
+  if (!deferredInstallPrompt) return;
+  if (localStorage.getItem('vw_field_installed')) return;
+  
+  const banner = document.createElement('div');
+  banner.id = 'install-banner';
+  banner.style.cssText = 'position:fixed;bottom:calc(var(--nav-h) + 12px);left:16px;right:16px;' +
+    'background:var(--surface);border:1px solid var(--accent);border-radius:14px;' +
+    'padding:14px 16px;display:flex;align-items:center;gap:12px;z-index:500;' +
+    'box-shadow:0 4px 20px rgba(0,0,0,.4);';
+  banner.innerHTML = `
+    <div style="font-size:28px;">📲</div>
+    <div style="flex:1;">
+      <div style="font-weight:600;font-size:14px;">Install Field App</div>
+      <div style="font-size:12px;color:var(--text2);">Add to home screen for quick access</div>
+    </div>
+    <button onclick="installApp()" style="background:var(--accent);color:var(--base);border:none;
+      border-radius:8px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;">Install</button>
+    <button onclick="document.getElementById('install-banner')?.remove();localStorage.setItem('vw_field_installed','dismissed');"
+      style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:4px;">✕</button>
+  `;
+  document.body.appendChild(banner);
+}
+
+async function installApp() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') {
+    localStorage.setItem('vw_field_installed', 'true');
+    document.getElementById('install-banner')?.remove();
+    showToast('✅ App installed! Find it on your home screen.');
+  }
+  deferredInstallPrompt = null;
+}
+
+// iOS Safari: show manual instructions since beforeinstallprompt not supported
+function showIOSInstallHint() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isInStandaloneMode = window.navigator.standalone;
+  if (isIOS && !isInStandaloneMode && !localStorage.getItem('vw_field_installed')) {
+    const hint = document.createElement('div');
+    hint.style.cssText = 'position:fixed;bottom:calc(var(--nav-h)+12px);left:16px;right:16px;' +
+      'background:var(--surface);border:1px solid var(--accent);border-radius:14px;' +
+      'padding:14px 16px;z-index:500;font-size:13px;';
+    hint.innerHTML = `
+      <div style="font-weight:600;margin-bottom:6px;">📲 Install on iPhone</div>
+      <div style="color:var(--text2);line-height:1.6;">
+        Tap the <strong>Share button</strong> (box with arrow) at the bottom of Safari,
+        then tap <strong>"Add to Home Screen"</strong>
+      </div>
+      <button onclick="this.parentElement.remove();localStorage.setItem('vw_field_installed','ios-dismissed');"
+        style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);
+        border-radius:8px;padding:8px 14px;color:var(--text);font-size:13px;cursor:pointer;width:100%;">Got it</button>
+    `;
+    document.body.appendChild(hint);
+  }
+}
+</script>
+</body>
+</html>
