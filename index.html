@@ -646,6 +646,257 @@ input[type=file] { display: none; }
     </div>
   </div>
 
+  <!-- LEADS TAB -->
+  <div class="body hidden" id="tab-leads" style="padding-bottom: calc(var(--nav-h) + 16px);">
+    <div class="pad">
+      <div class="section-header">
+        <div class="section-title">Leads & Requests</div>
+        <button onclick="openNewLeadSheet()" style="background:var(--accent);color:var(--base);border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">+ New Lead</button>
+      </div>
+
+      <!-- Quick actions -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <button onclick="openQuotationRequest()" class="card" style="border:1px solid rgba(245,166,35,.3);background:var(--accent-soft);cursor:pointer;text-align:left;padding:14px;">
+          <div style="font-size:20px;margin-bottom:6px;">📋</div>
+          <div style="font-size:14px;font-weight:700;color:var(--accent);">Request Quotation</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px;">Send to sales team</div>
+        </button>
+        <button onclick="showTab('catalogs')" class="card" style="border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);cursor:pointer;text-align:left;padding:14px;">
+          <div style="font-size:20px;margin-bottom:6px;">📚</div>
+          <div style="font-size:14px;font-weight:700;color:var(--success);">Share Catalog</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px;">Browse & send to customer</div>
+        </button>
+      </div>
+
+      <!-- Open leads -->
+      <div class="section-title" style="margin-bottom:10px;">My open leads</div>
+      <div id="leads-list">
+        <div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATALOGS TAB -->
+  <div class="body hidden" id="tab-catalogs" style="padding-bottom: calc(var(--nav-h) + 16px);">
+    <div class="pad">
+      <div class="section-header">
+        <div class="section-title">Product Catalogs</div>
+        <span style="font-size:12px;color:var(--text3);" id="catalog-count">—</span>
+      </div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:14px;">
+        Browse and share catalogs directly with customers on WhatsApp
+      </div>
+      <div id="catalogs-list">
+        <div style="text-align:center;padding:32px;color:var(--text3);font-size:13px;">Loading catalogs…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEAM TAB (ASM/TL only) -->
+  <div class="body hidden" id="tab-team" style="padding-bottom: calc(var(--nav-h) + 16px);">
+    <div class="pad">
+
+      <!-- Manager: assign new visit -->
+      <div id="team-manager-panel">
+        <div class="section-header">
+          <div class="section-title">My Team</div>
+          <button id="btn-assign-visit" onclick="openAssignVisitSheet()"
+            style="background:var(--accent);color:var(--base);border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">
+            + Assign Visit
+          </button>
+        </div>
+
+        <!-- Team live status -->
+        <div id="team-live-list" style="margin-bottom:16px;">
+          <div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">Loading team…</div>
+        </div>
+
+        <!-- Team stats this cycle -->
+        <div class="section-title" style="margin-bottom:10px;">This cycle performance</div>
+        <div id="team-stats-list">
+          <div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">Loading…</div>
+        </div>
+
+        <!-- Pending assignments -->
+        <div class="section-header mt-16">
+          <div class="section-title">Pending assignments</div>
+          <span id="pending-assign-count" style="font-size:12px;color:var(--text3);"></span>
+        </div>
+        <div id="pending-assignments-list">
+          <div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">Loading…</div>
+        </div>
+      </div>
+
+      <!-- Non-manager: see own assignments + team context -->
+      <div id="team-rep-panel" class="hidden">
+        <div class="section-title" style="margin-bottom:12px;">Assigned to me</div>
+        <div id="my-assignments-list">
+          <div style="text-align:center;padding:16px;color:var(--text3);">Loading…</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ASSIGN VISIT SHEET (manager creates assignment) -->
+  <div class="sheet-backdrop" id="sheet-assign-visit">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Assign Site Visit</div>
+        <button class="sheet-close" onclick="closeSheet('sheet-assign-visit')">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="form-group">
+          <label class="form-label">Assign to <span class="req">*</span></label>
+          <select class="form-select" id="assign-rep-id">
+            <option value="">Select team member…</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Site / Customer name</label>
+          <input class="form-input" id="assign-site-name" type="text" placeholder="e.g. Ravi Kumar's house, Bhavanipuram">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Area / Address</label>
+          <input class="form-input" id="assign-site-addr" type="text" placeholder="Area and landmark">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date <span class="req">*</span></label>
+          <input class="form-input" id="assign-date" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <div class="chip-row" id="assign-priority-chips">
+            <div class="chip selected" data-val="normal">Normal</div>
+            <div class="chip" data-val="high">High</div>
+            <div class="chip" data-val="urgent">Urgent</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Instructions for rep</label>
+          <textarea class="form-textarea" id="assign-instructions" placeholder="Who to meet, what to focus on, competitor intel needed…"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contact name (if known)</label>
+          <input class="form-input" id="assign-contact-name" type="text" placeholder="e.g. Ravi Kumar (Owner)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contact phone</label>
+          <input class="form-input" id="assign-contact-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number">
+        </div>
+        <button class="btn btn-primary" onclick="saveAssignment()">Assign Visit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUOTATION REQUEST SHEET -->
+  <div class="sheet-backdrop" id="sheet-quotation-req">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Request Quotation</div>
+        <button class="sheet-close" onclick="closeSheet('sheet-quotation-req')">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="form-group">
+          <label class="form-label">Customer name <span class="req">*</span></label>
+          <input class="form-input" id="qr-customer-name" type="text" placeholder="Full name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">WhatsApp number <span class="req">*</span></label>
+          <input class="form-input" id="qr-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Site address</label>
+          <input class="form-input" id="qr-address" type="text" placeholder="Site location">
+        </div>
+        <div class="form-group">
+          <label class="form-label">What do they need?</label>
+          <div class="chip-row" id="qr-category-chips" style="margin-bottom:10px;">
+            <div class="chip" data-val="tiles">Tiles</div>
+            <div class="chip" data-val="sanitaryware">Sanitaryware</div>
+            <div class="chip" data-val="pipes">Pipes</div>
+            <div class="chip" data-val="fans">Fans</div>
+            <div class="chip" data-val="paint">Paint</div>
+            <div class="chip" data-val="electrical">Electrical</div>
+            <div class="chip" data-val="bathware">Bathware</div>
+            <div class="chip" data-val="other">Other</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Area (sq ft)</label>
+          <input class="form-input mono" id="qr-sqft" type="number" inputmode="numeric" placeholder="e.g. 1800">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Budget (₹)</label>
+          <input class="form-input mono" id="qr-budget" type="number" inputmode="numeric" placeholder="e.g. 200000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes for sales team</label>
+          <textarea class="form-textarea" id="qr-notes" placeholder="Any specific brands, designs, or preferences mentioned by customer…"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="submitQuotationRequest()">Send to Sales Team</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW LEAD SHEET -->
+  <div class="sheet-backdrop" id="sheet-new-lead">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Create Lead</div>
+        <button class="sheet-close" onclick="closeSheet('sheet-new-lead')">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="form-group">
+          <label class="form-label">Customer name <span class="req">*</span></label>
+          <input class="form-input" id="lead-name" type="text" placeholder="Full name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone <span class="req">*</span></label>
+          <input class="form-input" id="lead-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Site address</label>
+          <input class="form-input" id="lead-address" type="text" placeholder="Where is the site?">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Requirement</label>
+          <div class="chip-row" id="lead-category-chips" style="margin-bottom:8px;">
+            <div class="chip" data-val="tiles">Tiles</div>
+            <div class="chip" data-val="sanitaryware">Sanitaryware</div>
+            <div class="chip" data-val="pipes">Pipes</div>
+            <div class="chip" data-val="fans">Fans</div>
+            <div class="chip" data-val="paint">Paint</div>
+            <div class="chip" data-val="electrical">Electrical</div>
+            <div class="chip" data-val="bathware">Bathware</div>
+            <div class="chip" data-val="other">Other</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stage</label>
+          <select class="form-select" id="lead-stage">
+            <option value="new">New — first contact</option>
+            <option value="interested">Interested — wants more info</option>
+            <option value="quotation">Quotation needed</option>
+            <option value="followup">Follow-up scheduled</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="lead-notes" placeholder="What did they say? Budget, timeline, requirements…"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Follow-up date</label>
+          <input class="form-input" id="lead-followup" type="date">
+        </div>
+        <button class="btn btn-primary" onclick="submitNewLead()">Create Lead</button>
+      </div>
+    </div>
+  </div>
+
   <!-- PROFILE TAB -->
   <div class="body hidden" id="tab-profile" style="padding-bottom: calc(var(--nav-h) + 16px);">
     <div class="pad">
@@ -724,11 +975,17 @@ input[type=file] { display: none; }
       </svg>
       Team
     </button>
+    <button class="nav-item" data-tab="catalogs" onclick="showTab('catalogs')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+      </svg>
+      Catalogs
+    </button>
     <button class="nav-item" data-tab="profile" onclick="showTab('profile')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
       </svg>
-      Profile
+      Me
     </button>
   </nav>
 </div>
@@ -1343,12 +1600,7 @@ async function afterLogin() {
   showTeamTabIfManager();
 }
 
-// ── Manager role detection ──
-function isManagerRole(staff) {
-  const r = ((staff.designation || '') + ' ' + (staff.role || '')).toLowerCase();
-  return r.includes('team leader') || r.includes('tl') || r.includes('asm') ||
-         r.includes('cluster head') || r.includes('region head');
-}
+// isManagerRole defined below in Team section
 
 async function showTeamTabIfManager() {
   if (!currentUser) return;
@@ -3340,7 +3592,459 @@ async function signOut() {
   document.getElementById('login-phone-step').classList.remove('hidden');
 }
 
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// CATALOGS — fetch from DB and show in field app
+// ══════════════════════════════════════════════════════
+async function loadCatalogs() {
+  const el = document.getElementById('catalogs-list');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);">Loading catalogs…</div>';
+
+  const { data: cats } = await sb.from('catalogs')
+    .select('id,name,brand,category,type,file_url,description,is_team_visible,updated_at')
+    .eq('is_team_visible', true)
+    .order('created_at', { ascending: false });
+
+  if (!cats?.length) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);">No catalogs available yet.</div>';
+    return;
+  }
+  document.getElementById('catalog-count').textContent = cats.length + ' available';
+
+  el.innerHTML = cats.map(c => `
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="width:44px;height:52px;border-radius:8px;background:var(--accent-soft);border:1px solid rgba(245,166,35,.3);
+             display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">📖</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);line-height:1.3;">${c.name}</div>
+          ${c.brand ? `<div style="font-size:12px;color:var(--accent);font-weight:600;margin-top:2px;">${c.brand}</div>` : ''}
+          ${c.category ? `<div style="font-size:11px;color:var(--text3);margin-top:2px;">${c.category}${c.type?' · '+c.type:''}</div>` : ''}
+          ${c.description ? `<div style="font-size:12px;color:var(--text2);margin-top:4px;">${c.description}</div>` : ''}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+        ${c.file_url ? `
+          <a href="${c.file_url}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;text-align:center;">👁️ View</a>
+          <button class="btn btn-primary btn-sm" onclick="shareCatalogOnWA('${c.name.replace(/'/g,'&#39;')}','${c.file_url}')">📲 Share WA</button>
+        ` : `
+          <div class="btn btn-secondary btn-sm" style="opacity:.4;cursor:default;grid-column:1/-1;text-align:center;">File not uploaded yet</div>
+        `}
+      </div>
+    </div>
+  `).join('');
+}
+
+function shareCatalogOnWA(name, url) {
+  const text = 'Hello! 👋\n\nHere is the catalog you requested:\n*' + name + '*\n\n' + url + '\n\n— ' + (currentUser?.name||'V Wholesale') + ' | V Wholesale';
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+}
+
+// ══════════════════════════════════════════════════════
+// LEADS — create, view, send to CRM
+// ══════════════════════════════════════════════════════
+let leadCategories = [];
+let qrCategories = [];
+
+async function loadLeads() {
+  const el = document.getElementById('leads-list');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);">Loading…</div>';
+
+  const { data: leads } = await sb.from('leads')
+    .select('id,customer_id,stage,notes,follow_up_date,created_at,source_name,value')
+    .eq('source', 'field')
+    .eq('source_name', currentUser?.name||'')
+    .order('created_at', { ascending: false }).limit(20);
+
+  if (!leads?.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">No leads yet.<br>Tap + New Lead to add one.</div>';
+    return;
+  }
+
+  const custIds = [...new Set(leads.map(l=>l.customer_id).filter(Boolean))];
+  let custMap = {};
+  if (custIds.length) {
+    const { data: custs } = await sb.from('customers').select('id,name,phone').in('id', custIds);
+    custs?.forEach(c => { custMap[c.id] = c; });
+  }
+
+  const stageColor = { new:'var(--text3)', interested:'var(--accent)', quotation:'#8B5CF6', followup:'var(--success)' };
+  el.innerHTML = leads.map(l => {
+    const cust = custMap[l.customer_id]||{};
+    return `<div class="card" style="border-left:3px solid ${stageColor[l.stage]||'var(--border)'};margin-bottom:8px;">
+      <div class="flex-between">
+        <div style="font-size:14px;font-weight:700;">${cust.name||'Lead'}</div>
+        <div style="font-size:11px;padding:3px 8px;border-radius:12px;background:var(--surface2);color:var(--text2);">${l.stage||'new'}</div>
+      </div>
+      ${cust.phone ? `<div style="font-size:12px;color:var(--text3);margin-top:3px;">📱 ${cust.phone}</div>` : ''}
+      ${l.notes ? `<div style="font-size:12px;color:var(--text2);margin-top:4px;">${l.notes.substring(0,80)}${l.notes.length>80?'…':''}</div>` : ''}
+      ${l.follow_up_date ? `<div style="font-size:11px;color:var(--accent);margin-top:6px;">📅 Follow-up: ${l.follow_up_date}</div>` : ''}
+      ${cust.phone ? `<div style="display:flex;gap:8px;margin-top:10px;">
+        <a href="tel:+91${cust.phone}" class="btn btn-secondary btn-sm" style="flex:1;text-decoration:none;">📞 Call</a>
+        <a href="https://wa.me/91${cust.phone}" target="_blank" class="btn btn-primary btn-sm" style="flex:1;text-decoration:none;">📲 WhatsApp</a>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openNewLeadSheet() {
+  const tmr = new Date(); tmr.setDate(tmr.getDate()+2);
+  document.getElementById('lead-followup').value = tmr.toISOString().split('T')[0];
+  ['lead-name','lead-phone','lead-address','lead-notes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('lead-stage').value = 'new';
+  document.querySelectorAll('#lead-category-chips .chip').forEach(c=>c.classList.remove('selected'));
+  leadCategories = [];
+  openSheet('sheet-new-lead');
+}
+
+async function submitNewLead() {
+  const name = document.getElementById('lead-name').value.trim();
+  const phone = document.getElementById('lead-phone').value.trim().replace(/\D/g,'');
+  const address = document.getElementById('lead-address').value.trim();
+  const notes = document.getElementById('lead-notes').value.trim();
+  const stage = document.getElementById('lead-stage').value;
+  const followup = document.getElementById('lead-followup').value;
+
+  if (!name) { showToast('Enter customer name'); return; }
+  if (phone.length !== 10) { showToast('Enter valid 10-digit phone'); return; }
+
+  const btn = document.querySelector('#sheet-new-lead .btn-primary');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    let customerId = null;
+    const { data: existCust } = await sb.from('customers').select('id').eq('phone', phone).maybeSingle();
+    if (existCust) {
+      customerId = existCust.id;
+    } else {
+      const { data: newCust } = await sb.from('customers').insert({
+        name, phone, whatsapp: phone, source: 'field_team', address: address||null
+      }).select('id').single();
+      customerId = newCust?.id;
+    }
+
+    await sb.from('leads').insert({
+      customer_id: customerId,
+      department: 'Field',
+      stage,
+      notes: '[Field Rep: ' + currentUser.name + ']\n' + (address ? 'Site: '+address+'\n' : '') + (leadCategories.length ? 'Needs: '+leadCategories.join(', ')+'\n' : '') + (notes||''),
+      follow_up_date: followup||null,
+      source: 'field',
+      source_name: currentUser.name,
+    });
+
+    await sb.from('tasks').insert({
+      type: 'field_lead',
+      department: 'Sales',
+      title: 'Field Lead — ' + name,
+      description: 'Rep: ' + currentUser.name + '\nCustomer: ' + name + ' | +91' + phone + '\nSite: ' + (address||'—') + '\nNeeds: ' + (leadCategories.join(', ')||'—') + '\nNotes: ' + (notes||'—'),
+      status: 'open',
+      priority: 'normal',
+      created_by: currentUser.name,
+      follow_up_date: followup||null,
+    });
+
+    closeSheet('sheet-new-lead');
+    showToast('✅ Lead created & sent to CRM');
+    loadLeads();
+  } catch(e) { showToast('Error: ' + e.message); }
+  btn.disabled = false; btn.textContent = 'Create Lead';
+}
+
+// ══════════════════════════════════════════════════════
+// QUOTATION REQUEST
+// ══════════════════════════════════════════════════════
+function openQuotationRequest(prefillPhone) {
+  ['qr-customer-name','qr-phone','qr-address','qr-sqft','qr-budget','qr-notes'].forEach(id => {
+    document.getElementById(id).value = id==='qr-phone' && prefillPhone ? prefillPhone : '';
+  });
+  document.querySelectorAll('#qr-category-chips .chip').forEach(c=>c.classList.remove('selected'));
+  qrCategories = [];
+  openSheet('sheet-quotation-req');
+}
+
+async function submitQuotationRequest() {
+  const name = document.getElementById('qr-customer-name').value.trim();
+  const phone = document.getElementById('qr-phone').value.trim().replace(/\D/g,'');
+  const address = document.getElementById('qr-address').value.trim();
+  const sqft = document.getElementById('qr-sqft').value;
+  const budget = document.getElementById('qr-budget').value;
+  const notes = document.getElementById('qr-notes').value.trim();
+
+  if (!name) { showToast('Enter customer name'); return; }
+  if (phone.length !== 10) { showToast('Enter valid phone'); return; }
+
+  const btn = document.querySelector('#sheet-quotation-req .btn-primary');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  try {
+    await sb.from('tasks').insert({
+      type: 'field_quotation_request',
+      department: 'Sales',
+      title: 'Quotation Request — ' + name,
+      description: 'QUOTATION REQUEST FROM FIELD REP\nRep: ' + currentUser.name + '\nCustomer: ' + name + '\nWhatsApp: +91' + phone + '\nSite: ' + (address||'—') + '\nArea: ' + (sqft ? sqft+' sqft' : '—') + '\nBudget: ' + (budget ? '₹'+parseInt(budget).toLocaleString('en-IN') : '—') + '\nNeeds: ' + (qrCategories.join(', ')||'—') + '\nNotes: ' + (notes||'—') + '\n\nPlease send quotation to customer WhatsApp.',
+      status: 'open',
+      priority: 'high',
+      created_by: currentUser.name,
+      follow_up_date: new Date().toISOString().split('T')[0],
+    });
+    closeSheet('sheet-quotation-req');
+    showToast('✅ Sent to sales team');
+  } catch(e) { showToast('Error: ' + e.message); }
+  btn.disabled = false; btn.textContent = 'Send to Sales Team';
+}
+
+// ══════════════════════════════════════════════════════
+// TEAM TAB — Manager assigns; Rep sees own assignments
+// ══════════════════════════════════════════════════════
+let teamMembers = [];
+
+function isManagerRole(staff) {
+  const r = (staff?.designation||staff?.role||'').toLowerCase();
+  return r.includes('asm') || r.includes('team leader') || r.includes('tl') || r.includes('cluster') || r.includes('region');
+}
+
+async function loadTeamData() {
+  if (!currentUser) return;
+  const isMgr = isManagerRole(currentUser);
+  document.getElementById('team-manager-panel')?.classList.toggle('hidden', !isMgr);
+  document.getElementById('team-rep-panel')?.classList.toggle('hidden', isMgr);
+  isMgr ? loadManagerTeamView() : loadRepAssignmentsView();
+}
+
+async function loadManagerTeamView() {
+  const { data: reps } = await sb.from('staff')
+    .select('id,name,designation,role')
+    .eq('department','Field').eq('active',true)
+    .eq('reporting_to', currentUser.id.toString());
+
+  teamMembers = reps||[];
+
+  const sel = document.getElementById('assign-rep-id');
+  if (sel) sel.innerHTML = '<option value="">Select team member…</option>' +
+    teamMembers.map(r=>`<option value="${r.id}">${r.name} (${r.designation||r.role||'—'})</option>`).join('');
+
+  const today = new Date().toISOString().split('T')[0];
+  const teamList = document.getElementById('team-live-list');
+
+  if (!teamList) return;
+  if (!teamMembers.length) {
+    teamList.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:12px;">No direct reports yet</div>';
+    renderTeamStats([]);
+    return;
+  }
+
+  const repIds = teamMembers.map(r=>r.id);
+  const [locsRes, visitsRes] = await Promise.all([
+    sb.from('field_location_log').select('staff_id,recorded_at,lat,lng').in('staff_id', repIds)
+      .gte('recorded_at', today+'T00:00:00').order('recorded_at',{ascending:false}),
+    sb.from('field_visits').select('id,staff_id,visit_quality_score,converted_invoice_id,conversion_value')
+      .in('staff_id', repIds).gte('created_at', today+'T00:00:00')
+  ]);
+
+  const lastLoc = {};
+  (locsRes.data||[]).forEach(l => { if (!lastLoc[l.staff_id]) lastLoc[l.staff_id] = l; });
+  const todayVisits = {};
+  (visitsRes.data||[]).forEach(v => { todayVisits[v.staff_id] = (todayVisits[v.staff_id]||0)+1; });
+
+  teamList.innerHTML = teamMembers.map(rep => {
+    const loc = lastLoc[rep.id];
+    const ago = loc ? Math.round((Date.now()-new Date(loc.recorded_at))/60000) : null;
+    const dot = !loc ? 'var(--text3)' : ago<5 ? 'var(--success)' : ago<20 ? 'var(--accent)' : 'var(--danger)';
+    return `<div class="card" style="margin-bottom:8px;padding:12px;">
+      <div class="flex-between">
+        <div><div style="font-size:14px;font-weight:700;">${rep.name}</div>
+          <div style="font-size:11px;color:var(--text2);">${rep.designation||rep.role||'—'}</div></div>
+        <div style="text-align:right;">
+          <div class="mono" style="font-size:20px;font-weight:700;color:var(--accent);">${todayVisits[rep.id]||0}</div>
+          <div style="font-size:10px;color:var(--text3);">today</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:${dot};flex-shrink:0;"></div>
+        <span style="font-size:12px;color:var(--text2);">${loc ? 'Signal '+ago+'m ago' : 'No location today'}</span>
+        ${loc ? `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" style="margin-left:auto;font-size:11px;color:var(--accent);text-decoration:none;">Map ↗</a>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  await renderTeamStats(repIds);
+  await loadPendingAssignments();
+}
+
+async function renderTeamStats(repIds) {
+  const el = document.getElementById('team-stats-list');
+  if (!el || !repIds.length) return;
+  const cycleStart = getCycleStart();
+  const { data: visits } = await sb.from('field_visits')
+    .select('staff_id,visit_quality_score,converted_invoice_id,conversion_value')
+    .in('staff_id', repIds).gte('created_at', cycleStart);
+
+  el.innerHTML = teamMembers.map(rep => {
+    const rv = (visits||[]).filter(v=>v.staff_id===rep.id);
+    const avgQ = rv.length ? Math.round(rv.reduce((s,v)=>s+(v.visit_quality_score||0),0)/rv.length) : 0;
+    const billing = rv.reduce((s,v)=>s+(v.conversion_value||0),0);
+    return `<div class="card" style="margin-bottom:8px;padding:12px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">${rep.name}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center;">
+        <div><div class="mono" style="font-size:16px;font-weight:700;color:var(--accent);">${rv.length}</div>
+          <div style="font-size:10px;color:var(--text3);">visits</div></div>
+        <div><div class="mono" style="font-size:16px;font-weight:700;color:var(--success);">${avgQ}%</div>
+          <div style="font-size:10px;color:var(--text3);">quality</div></div>
+        <div><div class="mono" style="font-size:16px;font-weight:700;">₹${billing>0?(billing/100000).toFixed(1)+'L':'0'}</div>
+          <div style="font-size:10px;color:var(--text3);">billing</div></div>
+      </div></div>`;
+  }).join('');
+}
+
+async function loadPendingAssignments() {
+  if (!teamMembers.length) return;
+  const repIds = teamMembers.map(r=>r.id);
+  const { data: assignments } = await sb.from('field_visit_assignments')
+    .select('*').in('assigned_to_staff_id', repIds)
+    .not('status','in','("completed","cancelled")')
+    .order('scheduled_date',{ascending:true}).limit(10);
+
+  const el = document.getElementById('pending-assignments-list');
+  if (!el) return;
+  document.getElementById('pending-assign-count').textContent = assignments?.length ? assignments.length+' open' : '';
+
+  if (!assignments?.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:12px;">No pending assignments</div>';
+    return;
+  }
+  const repMap = Object.fromEntries(teamMembers.map(r=>[r.id,r.name]));
+  el.innerHTML = assignments.map(a=>`
+    <div class="card" style="margin-bottom:8px;padding:12px;border-left:3px solid ${a.priority==='urgent'?'var(--danger)':a.priority==='high'?'var(--accent)':'var(--border)'};">
+      <div class="flex-between">
+        <div style="font-size:13px;font-weight:700;">${a.site_name||'Site Visit'}</div>
+        <div style="font-size:10px;color:var(--text3);">${a.scheduled_date}</div>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px;">→ ${repMap[a.assigned_to_staff_id]||'Rep'}</div>
+      ${a.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${a.notes.substring(0,60)}</div>`:''}
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button onclick="cancelAssignment(${a.id})" class="btn btn-secondary btn-sm" style="flex:1;color:var(--danger);border-color:var(--danger);">Cancel</button>
+      </div>
+    </div>`).join('');
+}
+
+async function cancelAssignment(id) {
+  if (!confirm('Cancel this assignment?')) return;
+  await sb.from('field_visit_assignments').update({status:'cancelled'}).eq('id',id);
+  showToast('Cancelled'); loadPendingAssignments();
+}
+
+async function loadRepAssignmentsView() {
+  const today = new Date().toISOString().split('T')[0];
+  const { data: assignments } = await sb.from('field_visit_assignments')
+    .select('*').eq('assigned_to_staff_id', currentUser.id)
+    .gte('scheduled_date', today).not('status','in','("completed","cancelled")')
+    .order('scheduled_date',{ascending:true});
+
+  const el = document.getElementById('my-assignments-list');
+  if (!el) return;
+  if (!assignments?.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">No assignments pending</div>';
+    return;
+  }
+  el.innerHTML = assignments.map(a=>`
+    <div class="card" style="margin-bottom:10px;border-left:3px solid ${a.priority==='urgent'?'var(--danger)':a.priority==='high'?'var(--accent)':'var(--border)'};">
+      <div class="flex-between">
+        <div style="font-size:14px;font-weight:700;">${a.site_name||'Site Visit'}</div>
+        <span style="font-size:10px;padding:2px 7px;border-radius:12px;background:var(--accent-soft);color:var(--accent);">${a.priority}</span>
+      </div>
+      ${a.site_address?`<div style="font-size:12px;color:var(--text2);margin-top:4px;">📍 ${a.site_address}</div>`:''}
+      ${a.notes?`<div style="font-size:12px;color:var(--text2);margin-top:4px;font-style:italic;">"${a.notes.substring(0,80)}"</div>`:''}
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;">📅 ${a.scheduled_date}</div>
+      <button onclick="acceptAndLogVisit(${a.id})" class="btn btn-success mt-8">Accept & Log Visit</button>
+    </div>`).join('');
+}
+
+async function acceptAndLogVisit(assignId) {
+  await sb.from('field_visit_assignments').update({status:'in_progress'}).eq('id',assignId);
+  showToast('Accepted — log the visit when you arrive');
+  openNewVisitSheet();
+}
+
+function openAssignVisitSheet() {
+  if (!teamMembers.length) {
+    showToast('No team members found — add direct reports first'); return;
+  }
+  ['assign-site-name','assign-site-addr','assign-instructions','assign-contact-name','assign-contact-phone'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  const tmr = new Date(); tmr.setDate(tmr.getDate()+1);
+  document.getElementById('assign-date').value = tmr.toISOString().split('T')[0];
+  document.querySelectorAll('#assign-priority-chips .chip').forEach(c=>c.classList.remove('selected'));
+  document.querySelector('#assign-priority-chips .chip[data-val="normal"]')?.classList.add('selected');
+  openSheet('sheet-assign-visit');
+}
+
+async function saveAssignment() {
+  const repId = parseInt(document.getElementById('assign-rep-id')?.value);
+  const siteName = document.getElementById('assign-site-name').value.trim();
+  const siteAddr = document.getElementById('assign-site-addr').value.trim();
+  const date = document.getElementById('assign-date').value;
+  const instructions = document.getElementById('assign-instructions').value.trim();
+  const contactName = document.getElementById('assign-contact-name').value.trim();
+  const contactPhone = document.getElementById('assign-contact-phone').value.trim().replace(/\D/g,'');
+  const priority = document.querySelector('#assign-priority-chips .chip.selected')?.dataset.val||'normal';
+
+  if (!repId) { showToast('Select a team member'); return; }
+  if (!date) { showToast('Set a date'); return; }
+
+  const btn = document.querySelector('#sheet-assign-visit .btn-primary');
+  btn.disabled = true; btn.textContent = 'Assigning…';
+
+  try {
+    const notesParts = [];
+    if (instructions) notesParts.push(instructions);
+    if (contactName) notesParts.push('Contact: '+contactName+(contactPhone?' | +91'+contactPhone:''));
+    
+    await sb.from('field_visit_assignments').insert({
+      assigned_to_staff_id: repId,
+      assigned_by_staff_id: currentUser.id,
+      site_name: siteName||null,
+      site_address: siteAddr||null,
+      scheduled_date: date,
+      priority,
+      notes: notesParts.join('\n')||null,
+      status: 'pending',
+      city: currentUser.city||'Vijayawada',
+    });
+
+    closeSheet('sheet-assign-visit');
+    const repName = teamMembers.find(r=>r.id===repId)?.name||'rep';
+    showToast('✅ Assigned to '+repName);
+    loadPendingAssignments();
+  } catch(e) { showToast('Error: '+e.message); }
+  btn.disabled = false; btn.textContent = 'Assign Visit';
+}
+
+function getCycleStart() {
+  const now = new Date(); const day = now.getDate();
+  const d = day>=21 ? new Date(now.getFullYear(),now.getMonth(),21) : new Date(now.getFullYear(),now.getMonth()-1,21);
+  return d.toISOString().split('T')[0]+'T00:00:00';
+}
+
+// Wire up multi-select chip groups on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('lead-category-chips')?.addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if (!chip) return;
+    chip.classList.toggle('selected');
+    leadCategories = [...document.querySelectorAll('#lead-category-chips .chip.selected')].map(c=>c.dataset.val);
+  });
+  document.getElementById('qr-category-chips')?.addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if (!chip) return;
+    chip.classList.toggle('selected');
+    qrCategories = [...document.querySelectorAll('#qr-category-chips .chip.selected')].map(c=>c.dataset.val);
+  });
+  document.getElementById('assign-priority-chips')?.addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if (!chip) return;
+    document.querySelectorAll('#assign-priority-chips .chip').forEach(c=>c.classList.remove('selected'));
+    chip.classList.add('selected');
+  });
+});
 // UI UTILS
 // ══════════════════════════════════════════════
 function showScreen(id) {
@@ -3356,6 +4060,8 @@ function showTab(tab) {
   });
   if (tab === 'team') loadTeamData();
   if (tab === 'map') loadMapTab();
+  if (tab === 'leads') loadLeads();
+  if (tab === 'catalogs') loadCatalogs();
 }
 
 function openSheet(id) { document.getElementById(id).classList.add('open'); }
