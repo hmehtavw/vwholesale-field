@@ -897,6 +897,136 @@ input[type=file] { display: none; }
     </div>
   </div>
 
+  <!-- CHAT TAB -->
+  <div class="body hidden" id="tab-chat" style="padding-bottom: calc(var(--nav-h) + 0px);">
+
+    <!-- Chat list view -->
+    <div id="chat-list-view" style="height:100%;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;background:var(--surface);border-bottom:1px solid var(--border);">
+        <div style="font-size:16px;font-weight:700;">Messages</div>
+        <div style="display:flex;gap:10px;">
+          <button onclick="openNewChatSheet()" class="icon-btn" title="New chat">✏️</button>
+          <button onclick="openRequestSheet()" class="icon-btn" title="Send request">📋</button>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div style="padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border2);">
+        <input id="chat-search" class="form-input" type="search" placeholder="Search messages or people…"
+               style="padding:9px 12px;font-size:14px;" oninput="filterChatList(this.value)">
+      </div>
+
+      <!-- Chat list -->
+      <div id="chat-list" style="flex:1;overflow-y:auto;padding:0;">
+        <div style="text-align:center;padding:32px;color:var(--text3);font-size:13px;">Loading chats…</div>
+      </div>
+    </div>
+
+    <!-- Chat conversation view (hidden by default) -->
+    <div id="chat-conv-view" class="hidden" style="height:100%;display:flex;flex-direction:column;">
+      <!-- Conv header -->
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);">
+        <button onclick="exitConversation()" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;padding:0;">←</button>
+        <div id="conv-avatar" style="width:38px;height:38px;border-radius:50%;background:var(--accent-soft);border:1px solid rgba(245,166,35,.3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">💬</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="conv-name">Chat</div>
+          <div style="font-size:11px;color:var(--text3);" id="conv-sub">—</div>
+        </div>
+        <button id="conv-request-btn" onclick="openRequestToChat()" style="background:none;border:none;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;" class="hidden">+ Request</button>
+      </div>
+
+      <!-- Messages -->
+      <div id="conv-messages" style="flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px;">
+        <div style="text-align:center;padding:24px;color:var(--text3);">Loading…</div>
+      </div>
+
+      <!-- Typing area -->
+      <div style="background:var(--surface);border-top:1px solid var(--border);padding:10px 12px;display:flex;align-items:flex-end;gap:8px;">
+        <button id="voice-rec-btn" onclick="toggleVoiceRecording()"
+          style="width:40px;height:40px;border-radius:50%;border:none;background:var(--surface2);color:var(--text2);font-size:18px;cursor:pointer;flex-shrink:0;transition:background .2s;">🎤</button>
+        <div style="flex:1;position:relative;">
+          <textarea id="msg-input" placeholder="Type a message…" rows="1"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:10px 14px;font-size:14px;color:var(--text);font-family:inherit;resize:none;outline:none;max-height:120px;overflow-y:auto;line-height:1.4;"
+            oninput="autoResizeTextarea(this)"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+          <div id="voice-recording-indicator" class="hidden"
+            style="position:absolute;inset:0;background:var(--surface2);border:1px solid var(--danger);border-radius:20px;display:flex;align-items:center;padding:0 14px;gap:8px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--danger);animation:pulse 1s infinite;"></div>
+            <span style="font-size:13px;color:var(--danger);" id="rec-timer">0:00</span>
+            <span style="font-size:12px;color:var(--text3);">Recording… tap 🎤 to send</span>
+          </div>
+        </div>
+        <button onclick="sendMessage()"
+          style="width:40px;height:40px;border-radius:50%;border:none;background:var(--accent);color:var(--base);font-size:18px;cursor:pointer;flex-shrink:0;">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW CHAT SHEET (directory + connect request) -->
+  <div class="sheet-backdrop" id="sheet-new-chat">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">New Message</div>
+        <button class="sheet-close" onclick="closeSheet('sheet-new-chat')">✕</button>
+      </div>
+      <div class="sheet-body">
+        <input class="form-input" id="dir-search" type="search" placeholder="Search by name or department…"
+               oninput="filterDirectory(this.value)" style="margin-bottom:14px;">
+        <div id="staff-directory" style="max-height:60vh;overflow-y:auto;">
+          <div style="text-align:center;padding:16px;color:var(--text3);">Loading directory…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REQUEST SHEET (Leave / Expense / Complaint / Asset / General) -->
+  <div class="sheet-backdrop" id="sheet-request">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title" id="req-sheet-title">Send Request</div>
+        <button class="sheet-close" onclick="closeSheet('sheet-request')">✕</button>
+      </div>
+      <div class="sheet-body">
+        <!-- Type selector -->
+        <div id="req-type-select">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">What do you need?</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <button onclick="openRequestForm('leave')" class="card" style="cursor:pointer;text-align:left;padding:14px;border:1px solid var(--border);">
+              <div style="font-size:22px;margin-bottom:6px;">🏖️</div>
+              <div style="font-size:14px;font-weight:700;">Leave Request</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px;">Apply for time off</div>
+            </button>
+            <button onclick="openRequestForm('expense')" class="card" style="cursor:pointer;text-align:left;padding:14px;border:1px solid var(--border);">
+              <div style="font-size:22px;margin-bottom:6px;">💰</div>
+              <div style="font-size:14px;font-weight:700;">Expense Claim</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px;">Claim reimbursement</div>
+            </button>
+            <button onclick="openRequestForm('complaint')" class="card" style="cursor:pointer;text-align:left;padding:14px;border:1px solid var(--border);">
+              <div style="font-size:22px;margin-bottom:6px;">📢</div>
+              <div style="font-size:14px;font-weight:700;">Complaint / Grievance</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px;">Raise an issue</div>
+            </button>
+            <button onclick="openRequestForm('asset')" class="card" style="cursor:pointer;text-align:left;padding:14px;border:1px solid var(--border);">
+              <div style="font-size:22px;margin-bottom:6px;">📱</div>
+              <div style="font-size:14px;font-weight:700;">Asset Request</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px;">Phone, powerbank, etc.</div>
+            </button>
+            <button onclick="openRequestForm('general')" class="card" style="cursor:pointer;text-align:left;padding:14px;border:1px solid var(--border);grid-column:1/-1;">
+              <div style="font-size:22px;margin-bottom:6px;">✉️</div>
+              <div style="font-size:14px;font-weight:700;">General Request</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px;">Anything else</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Dynamic form filled by openRequestForm() -->
+        <div id="req-form-area" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- PROFILE TAB -->
   <div class="body hidden" id="tab-profile" style="padding-bottom: calc(var(--nav-h) + 16px);">
     <div class="pad">
@@ -974,6 +1104,13 @@ input[type=file] { display: none; }
         <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
       </svg>
       Team
+    </button>
+    <button class="nav-item" data-tab="chat" onclick="showTab('chat')" style="position:relative;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+      <span id="chat-badge" class="nav-badge hidden">0</span>
+      Chat
     </button>
     <button class="nav-item" data-tab="catalogs" onclick="showTab('catalogs')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4062,6 +4199,7 @@ function showTab(tab) {
   if (tab === 'map') loadMapTab();
   if (tab === 'leads') loadLeads();
   if (tab === 'catalogs') loadCatalogs();
+  if (tab === 'chat') initChat();
 }
 
 function openSheet(id) { document.getElementById(id).classList.add('open'); }
@@ -4314,6 +4452,603 @@ function showIOSInstallHint() {
     document.body.appendChild(hint);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+// INTERNAL CHAT SYSTEM
+// ════════════════════════════════════════════════════════════
+let currentChatId = null;
+let allStaff = [];
+let myChats = [];
+let msgPollTimer = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let recTimerInterval = null;
+let recSeconds = 0;
+let isRecording = false;
+
+// ── Init ──
+async function initChat() {
+  if (!currentUser) return;
+  await loadAllStaff();
+  await loadChatList();
+  startChatBadgePoll();
+}
+
+async function loadAllStaff() {
+  const { data } = await sb.from('staff').select('id,name,designation,role,department,phone').eq('active', true).order('name');
+  allStaff = data || [];
+}
+
+// ── Chat List ──
+async function loadChatList() {
+  const { data: memberships } = await sb.from('internal_chat_members')
+    .select('chat_id,last_read_at,internal_chats(id,type,name,avatar_emoji,updated_at)')
+    .eq('staff_id', currentUser.id);
+
+  if (!memberships?.length) {
+    document.getElementById('chat-list').innerHTML =
+      '<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px;">No chats yet.<br>Tap ✏️ to start a conversation.</div>';
+    return;
+  }
+
+  // Get last message for each chat
+  const chatIds = memberships.map(m => m.chat_id);
+  const { data: lastMsgs } = await sb.from('internal_messages')
+    .select('chat_id,content,type,created_at,sender_staff_id')
+    .in('chat_id', chatIds).eq('is_deleted', false)
+    .order('created_at', { ascending: false });
+
+  const lastMsgMap = {};
+  (lastMsgs || []).forEach(m => { if (!lastMsgMap[m.chat_id]) lastMsgMap[m.chat_id] = m; });
+
+  // Get unread counts
+  const { data: unreadData } = await sb.from('internal_messages')
+    .select('chat_id,id,created_at').in('chat_id', chatIds).eq('is_deleted', false)
+    .neq('sender_staff_id', currentUser.id);
+
+  const unreadCount = {};
+  memberships.forEach(m => {
+    const lastRead = new Date(m.last_read_at || 0);
+    unreadCount[m.chat_id] = (unreadData || []).filter(msg =>
+      msg.chat_id === m.chat_id && new Date(msg.created_at) > lastRead
+    ).length;
+  });
+
+  const totalUnread = Object.values(unreadCount).reduce((a,b)=>a+b,0);
+  const badge = document.getElementById('chat-badge');
+  badge.textContent = totalUnread;
+  badge.classList.toggle('hidden', totalUnread === 0);
+
+  myChats = memberships.map(m => ({
+    ...m.internal_chats, membership: m,
+    lastMsg: lastMsgMap[m.chat_id],
+    unread: unreadCount[m.chat_id] || 0
+  })).sort((a,b) => {
+    const ta = a.lastMsg ? new Date(a.lastMsg.created_at) : new Date(a.updated_at || 0);
+    const tb = b.lastMsg ? new Date(b.lastMsg.created_at) : new Date(b.updated_at || 0);
+    return tb - ta;
+  });
+
+  renderChatList(myChats);
+}
+
+function renderChatList(chats) {
+  const el = document.getElementById('chat-list');
+  if (!chats.length) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px;">No chats yet. Tap ✏️ to connect.</div>';
+    return;
+  }
+
+  el.innerHTML = chats.map(c => {
+    const last = c.lastMsg;
+    const lastText = last ? (last.type==='voice' ? '🎤 Voice note' : last.type==='image' ? '📷 Photo' : (last.content||'').substring(0,40)) : 'No messages yet';
+    const lastTime = last ? fmtMsgTime(last.created_at) : '';
+    const typeEmoji = c.type === 'group' || c.type === 'department' ? c.avatar_emoji || '👥' : '👤';
+
+    return `<div onclick="openConversation(${c.id})" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border2);cursor:pointer;transition:background .15s;" onmousedown="this.style.background='var(--surface2)'" onmouseup="this.style.background=''">
+      <div style="width:46px;height:46px;border-radius:50%;background:var(--accent-soft);border:1px solid rgba(245,166,35,.2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;position:relative;">
+        ${typeEmoji}
+        ${c.unread > 0 ? `<div style="position:absolute;top:-2px;right:-2px;width:18px;height:18px;border-radius:50%;background:var(--accent);color:var(--base);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">${c.unread}</div>` : ''}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:14px;font-weight:${c.unread?'700':'600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%;">${c.name || 'Chat'}</div>
+          <div style="font-size:11px;color:var(--text3);flex-shrink:0;">${lastTime}</div>
+        </div>
+        <div style="font-size:13px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lastText}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterChatList(q) {
+  const filtered = !q.trim() ? myChats : myChats.filter(c => (c.name||'').toLowerCase().includes(q.toLowerCase()));
+  renderChatList(filtered);
+}
+
+// ── Open Conversation ──
+async function openConversation(chatId) {
+  currentChatId = chatId;
+  const chat = myChats.find(c => c.id === chatId) || { name: 'Chat', avatar_emoji: '💬', type: 'dm' };
+
+  document.getElementById('conv-name').textContent = chat.name || 'Chat';
+  document.getElementById('conv-avatar').textContent = chat.avatar_emoji || (chat.type==='group'?'👥':'👤');
+  document.getElementById('conv-sub').textContent = chat.type === 'dm' ? 'Direct message' : `${chat.type} channel`;
+
+  document.getElementById('chat-list-view').classList.add('hidden');
+  document.getElementById('chat-conv-view').classList.remove('hidden');
+
+  await loadMessages(chatId);
+  markChatRead(chatId);
+
+  // Poll for new messages every 5s
+  clearInterval(msgPollTimer);
+  msgPollTimer = setInterval(() => refreshMessages(chatId), 5000);
+}
+
+async function loadMessages(chatId) {
+  const { data: msgs } = await sb.from('internal_messages')
+    .select('*').eq('chat_id', chatId).eq('is_deleted', false)
+    .order('created_at', { ascending: true }).limit(60);
+
+  renderMessages(msgs || []);
+  scrollToBottom();
+}
+
+async function refreshMessages(chatId) {
+  if (currentChatId !== chatId) return;
+  const { data: msgs } = await sb.from('internal_messages')
+    .select('*').eq('chat_id', chatId).eq('is_deleted', false)
+    .order('created_at', { ascending: true }).limit(60);
+
+  renderMessages(msgs || []);
+  markChatRead(chatId);
+}
+
+function renderMessages(msgs) {
+  const el = document.getElementById('conv-messages');
+  if (!msgs.length) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px;">No messages yet. Say hello! 👋</div>';
+    return;
+  }
+
+  const senderNames = {};
+  allStaff.forEach(s => { senderNames[s.id] = s.name; });
+
+  let lastDate = null;
+  el.innerHTML = msgs.map(m => {
+    const isMe = m.sender_staff_id === currentUser.id;
+    const senderName = senderNames[m.sender_staff_id] || 'Staff';
+    const msgDate = new Date(m.created_at).toLocaleDateString('en-IN', {day:'numeric',month:'short'});
+    const msgTime = fmtMsgTime(m.created_at);
+    let dateSep = '';
+    if (msgDate !== lastDate) {
+      lastDate = msgDate;
+      dateSep = `<div style="text-align:center;margin:12px 0 8px;"><span style="font-size:11px;color:var(--text3);background:var(--surface2);padding:3px 10px;border-radius:12px;">${msgDate}</span></div>`;
+    }
+
+    let bubble = '';
+    if (m.type === 'voice') {
+      bubble = `<div style="display:flex;align-items:center;gap:8px;min-width:160px;">
+        <button onclick="playVoice('${m.voice_url}')" style="width:36px;height:36px;border-radius:50%;border:none;background:${isMe?'rgba(0,0,0,.2)':'var(--accent-soft)'};color:${isMe?'#fff':'var(--accent)'};font-size:16px;cursor:pointer;">▶</button>
+        <div style="flex:1;">
+          <div style="height:4px;background:${isMe?'rgba(255,255,255,.3)':'var(--border)'};border-radius:2px;"><div style="width:100%;height:100%;background:${isMe?'rgba(255,255,255,.6)':'var(--accent)'};border-radius:2px;"></div></div>
+          <div style="font-size:10px;color:${isMe?'rgba(255,255,255,.6)':'var(--text3)'};margin-top:2px;">${m.voice_duration_s ? fmtDuration(m.voice_duration_s) : '—'}</div>
+        </div>
+      </div>${m.voice_transcript ? `<div style="font-size:11px;color:${isMe?'rgba(255,255,255,.7)':'var(--text2)'};margin-top:4px;font-style:italic;">"${m.voice_transcript}"</div>` : ''}`;
+    } else if (m.type === 'request') {
+      const meta = m.metadata || {};
+      bubble = `<div style="font-size:12px;font-weight:700;color:${isMe?'rgba(255,255,255,.8)':'var(--accent)'};margin-bottom:4px;">📋 ${meta.request_type?.toUpperCase() || 'REQUEST'}</div>
+        <div style="font-size:13px;">${m.content}</div>
+        <div style="margin-top:6px;font-size:11px;padding:3px 8px;border-radius:12px;display:inline-block;background:${meta.status==='approved'?'rgba(34,197,94,.2)':meta.status==='rejected'?'rgba(239,68,68,.2)':'rgba(245,166,35,.2)'};color:${meta.status==='approved'?'var(--success)':meta.status==='rejected'?'var(--danger)':'var(--accent)'};">${meta.status||'pending'}</div>`;
+    } else {
+      bubble = `<div style="font-size:14px;line-height:1.5;">${(m.content||'').split('\n').join('<br>')}</div>`;
+    }
+
+    return `${dateSep}
+      <div style="display:flex;flex-direction:column;align-items:${isMe?'flex-end':'flex-start'};margin-bottom:2px;">
+        ${!isMe ? `<div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:3px;margin-left:12px;">${senderName}</div>` : ''}
+        <div style="max-width:78%;padding:10px 12px;border-radius:${isMe?'18px 18px 4px 18px':'18px 18px 18px 4px'};
+             background:${isMe?'var(--accent)':'var(--surface2)'};color:${isMe?'var(--base)':'var(--text)'};
+             border:${isMe?'none':'1px solid var(--border2)'};">
+          ${bubble}
+          <div style="font-size:10px;color:${isMe?'rgba(15,25,35,.5)':'var(--text3)'};margin-top:4px;text-align:right;">${msgTime}${isMe?' ✓✓':''}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function scrollToBottom() {
+  const el = document.getElementById('conv-messages');
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+async function markChatRead(chatId) {
+  await sb.from('internal_chat_members')
+    .update({ last_read_at: new Date().toISOString() })
+    .eq('chat_id', chatId).eq('staff_id', currentUser.id);
+}
+
+function exitConversation() {
+  clearInterval(msgPollTimer);
+  currentChatId = null;
+  document.getElementById('chat-list-view').classList.remove('hidden');
+  document.getElementById('chat-conv-view').classList.add('hidden');
+  loadChatList();
+}
+
+// ── Send Message ──
+async function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text || !currentChatId) return;
+
+  input.value = '';
+  autoResizeTextarea(input);
+
+  const { error } = await sb.from('internal_messages').insert({
+    chat_id: currentChatId,
+    sender_staff_id: currentUser.id,
+    type: 'text',
+    content: text,
+  });
+
+  if (error) { showToast('Failed to send: ' + error.message); input.value = text; return; }
+  await sb.from('internal_chats').update({ updated_at: new Date().toISOString() }).eq('id', currentChatId);
+  refreshMessages(currentChatId);
+}
+
+function autoResizeTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ── Voice Recording ──
+async function toggleVoiceRecording() {
+  if (!isRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        await sendVoiceNote(blob, recSeconds);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      recSeconds = 0;
+      document.getElementById('voice-recording-indicator').classList.remove('hidden');
+      document.getElementById('msg-input').classList.add('hidden');
+      document.getElementById('voice-rec-btn').style.background = 'var(--danger)';
+      document.getElementById('voice-rec-btn').style.color = '#fff';
+      recTimerInterval = setInterval(() => {
+        recSeconds++;
+        document.getElementById('rec-timer').textContent = fmtDuration(recSeconds);
+        if (recSeconds >= 120) toggleVoiceRecording(); // max 2 min
+      }, 1000);
+    } catch(e) { showToast('Microphone permission denied'); }
+  } else {
+    clearInterval(recTimerInterval);
+    isRecording = false;
+    mediaRecorder?.stop();
+    document.getElementById('voice-recording-indicator').classList.add('hidden');
+    document.getElementById('msg-input').classList.remove('hidden');
+    document.getElementById('voice-rec-btn').style.background = 'var(--surface2)';
+    document.getElementById('voice-rec-btn').style.color = 'var(--text2)';
+  }
+}
+
+async function sendVoiceNote(blob, durationSec) {
+  if (!currentChatId) return;
+  const fileName = `voice_${currentUser.id}_${Date.now()}.webm`;
+  const filePath = `internal_chat/voice/${fileName}`;
+
+  const { data: uploadData, error: upErr } = await sb.storage.from('field-media').upload(filePath, blob, { contentType: 'audio/webm' });
+  if (upErr) { showToast('Voice upload failed'); return; }
+
+  const { data: { publicUrl } } = sb.storage.from('field-media').getPublicUrl(filePath);
+
+  await sb.from('internal_messages').insert({
+    chat_id: currentChatId,
+    sender_staff_id: currentUser.id,
+    type: 'voice',
+    voice_url: publicUrl,
+    voice_duration_s: durationSec,
+  });
+  await sb.from('internal_chats').update({ updated_at: new Date().toISOString() }).eq('id', currentChatId);
+  refreshMessages(currentChatId);
+}
+
+function playVoice(url) {
+  if (!url) return;
+  const audio = new Audio(url);
+  audio.play().catch(() => showToast('Cannot play audio'));
+}
+
+// ── Staff Directory + New Chat ──
+async function openNewChatSheet() {
+  openSheet('sheet-new-chat');
+  if (!allStaff.length) await loadAllStaff();
+  renderDirectory(allStaff);
+}
+
+async function renderDirectory(staffList) {
+  // Get my connections
+  const { data: conns } = await sb.from('internal_connections')
+    .select('*').or(`requester_staff_id.eq.${currentUser.id},target_staff_id.eq.${currentUser.id}`);
+
+  const connMap = {};
+  (conns||[]).forEach(c => {
+    const otherId = c.requester_staff_id === currentUser.id ? c.target_staff_id : c.requester_staff_id;
+    connMap[otherId] = c.status;
+  });
+
+  const el = document.getElementById('staff-directory');
+  const others = staffList.filter(s => s.id !== currentUser.id);
+
+  if (!others.length) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);">No staff found</div>';
+    return;
+  }
+
+  el.innerHTML = others.map(s => {
+    const status = connMap[s.id];
+    let actionBtn = '';
+    if (status === 'accepted') {
+      actionBtn = `<button onclick="startDMWith(${s.id},'${s.name.replace(/'/g,"&#39;")}')" 
+        style="font-size:12px;padding:6px 12px;border-radius:8px;background:var(--success);color:#fff;border:none;cursor:pointer;">Message</button>`;
+    } else if (status === 'pending') {
+      actionBtn = `<div style="font-size:12px;color:var(--text3);padding:6px 12px;">Pending…</div>`;
+    } else {
+      actionBtn = `<button onclick="sendConnectRequest(${s.id},'${s.name.replace(/'/g,"&#39;")}')"
+        style="font-size:12px;padding:6px 12px;border-radius:8px;background:var(--accent-soft);color:var(--accent);border:1px solid rgba(245,166,35,.4);cursor:pointer;">Connect</button>`;
+    }
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border2);">
+      <div style="width:38px;height:38px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--accent);flex-shrink:0;">
+        ${s.name.charAt(0).toUpperCase()}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;">${s.name}</div>
+        <div style="font-size:11px;color:var(--text3);">${s.designation||s.role||'—'} · ${s.department||'—'}</div>
+      </div>
+      ${actionBtn}
+    </div>`;
+  }).join('');
+}
+
+function filterDirectory(q) {
+  const filtered = !q.trim() ? allStaff : allStaff.filter(s =>
+    s.name.toLowerCase().includes(q.toLowerCase()) ||
+    (s.department||'').toLowerCase().includes(q.toLowerCase()) ||
+    (s.designation||'').toLowerCase().includes(q.toLowerCase())
+  );
+  renderDirectory(filtered);
+}
+
+async function sendConnectRequest(targetId, targetName) {
+  const { error } = await sb.from('internal_connections').insert({
+    requester_staff_id: currentUser.id,
+    target_staff_id: targetId,
+    status: 'pending'
+  });
+  if (error && !error.message.includes('duplicate')) {
+    showToast('Error: ' + error.message); return;
+  }
+  showToast('Connect request sent to ' + targetName);
+  openNewChatSheet(); // refresh
+}
+
+async function startDMWith(staffId, staffName) {
+  // Check if DM already exists
+  const { data: existing } = await sb.from('internal_chat_members')
+    .select('chat_id,internal_chats(id,type,name)')
+    .eq('staff_id', currentUser.id);
+
+  const myDmChatIds = (existing||[]).filter(m => m.internal_chats?.type === 'dm').map(m => m.chat_id);
+
+  let dmChatId = null;
+  if (myDmChatIds.length) {
+    const { data: theirMems } = await sb.from('internal_chat_members')
+      .select('chat_id').eq('staff_id', staffId).in('chat_id', myDmChatIds);
+    if (theirMems?.length) dmChatId = theirMems[0].chat_id;
+  }
+
+  if (!dmChatId) {
+    // Create new DM chat
+    const staff = allStaff.find(s => s.id === staffId);
+    const { data: newChat } = await sb.from('internal_chats').insert({
+      type: 'dm',
+      name: staffName,
+      created_by_staff_id: currentUser.id,
+      avatar_emoji: '👤'
+    }).select().single();
+
+    await sb.from('internal_chat_members').insert([
+      { chat_id: newChat.id, staff_id: currentUser.id, role: 'member' },
+      { chat_id: newChat.id, staff_id: staffId, role: 'member' }
+    ]);
+    dmChatId = newChat.id;
+    myChats.unshift({ id: dmChatId, name: staffName, type: 'dm', avatar_emoji: '👤', unread: 0 });
+  }
+
+  closeSheet('sheet-new-chat');
+  await openConversation(dmChatId);
+}
+
+// ── Request System ──
+function openRequestSheet() {
+  document.getElementById('req-type-select').classList.remove('hidden');
+  document.getElementById('req-form-area').classList.add('hidden');
+  document.getElementById('req-form-area').innerHTML = '';
+  document.getElementById('req-sheet-title').textContent = 'Send Request';
+  openSheet('sheet-request');
+}
+
+function openRequestToChat() {
+  closeSheet('sheet-request');
+  openRequestSheet();
+}
+
+const REQUEST_FORMS = {
+  leave: {
+    title: '🏖️ Leave Request',
+    fields: [
+      { id: 'leave-from', label: 'From date', type: 'date', req: true },
+      { id: 'leave-to', label: 'To date', type: 'date', req: true },
+      { id: 'leave-type', label: 'Leave type', type: 'select', options: ['Casual Leave','Sick Leave','Emergency Leave','Personal Leave'], req: true },
+      { id: 'leave-reason', label: 'Reason', type: 'textarea', placeholder: 'Brief reason…', req: true },
+    ]
+  },
+  expense: {
+    title: '💰 Expense Claim',
+    fields: [
+      { id: 'exp-amount', label: 'Amount (₹)', type: 'number', placeholder: 'e.g. 500', req: true },
+      { id: 'exp-category', label: 'Category', type: 'select', options: ['Travel/Fuel','Food','Accommodation','Tools/Equipment','Other'], req: true },
+      { id: 'exp-date', label: 'Date of expense', type: 'date', req: true },
+      { id: 'exp-desc', label: 'Description', type: 'textarea', placeholder: 'What was it for?', req: true },
+    ]
+  },
+  complaint: {
+    title: '📢 Complaint / Grievance',
+    fields: [
+      { id: 'comp-title', label: 'Subject', type: 'text', placeholder: 'Brief title', req: true },
+      { id: 'comp-against', label: 'Against (if applicable)', type: 'text', placeholder: 'Person / department / policy' },
+      { id: 'comp-desc', label: 'Details', type: 'textarea', placeholder: 'Describe what happened…', req: true },
+      { id: 'comp-anonymous', label: 'Submit anonymously?', type: 'checkbox' },
+    ]
+  },
+  asset: {
+    title: '📱 Asset Request',
+    fields: [
+      { id: 'asset-item', label: 'Item needed', type: 'text', placeholder: 'e.g. Powerbank, Phone, Sim Card', req: true },
+      { id: 'asset-qty', label: 'Quantity', type: 'number', placeholder: '1', req: false },
+      { id: 'asset-reason', label: 'Reason', type: 'textarea', placeholder: 'Why do you need this?', req: true },
+    ]
+  },
+  general: {
+    title: '✉️ General Request',
+    fields: [
+      { id: 'gen-title', label: 'Subject', type: 'text', placeholder: 'What is this about?', req: true },
+      { id: 'gen-to', label: 'To (department/person)', type: 'text', placeholder: 'e.g. HR, ASM, Sales Team' },
+      { id: 'gen-desc', label: 'Details', type: 'textarea', placeholder: 'Describe your request…', req: true },
+    ]
+  }
+};
+
+function openRequestForm(type) {
+  const form = REQUEST_FORMS[type];
+  if (!form) return;
+  document.getElementById('req-type-select').classList.add('hidden');
+  document.getElementById('req-sheet-title').textContent = form.title;
+
+  const html = form.fields.map(f => {
+    if (f.type === 'textarea') return `<div class="form-group"><label class="form-label">${f.label}${f.req?'<span class="req"> *</span>':''}</label>
+      <textarea class="form-textarea" id="${f.id}" placeholder="${f.placeholder||''}"></textarea></div>`;
+    if (f.type === 'select') return `<div class="form-group"><label class="form-label">${f.label}${f.req?'<span class="req"> *</span>':''}</label>
+      <select class="form-select" id="${f.id}"><option value="">Select…</option>${f.options.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
+    if (f.type === 'checkbox') return `<div class="form-group" style="display:flex;align-items:center;gap:10px;">
+      <input type="checkbox" id="${f.id}" style="width:18px;height:18px;">
+      <label for="${f.id}" style="font-size:14px;color:var(--text);">${f.label}</label></div>`;
+    return `<div class="form-group"><label class="form-label">${f.label}${f.req?'<span class="req"> *</span>':''}</label>
+      <input class="form-input" id="${f.id}" type="${f.type}" placeholder="${f.placeholder||''}"></div>`;
+  }).join('');
+
+  document.getElementById('req-form-area').classList.remove('hidden');
+  document.getElementById('req-form-area').innerHTML = html + `
+    <div class="btn-row mt-12">
+      <button class="btn btn-secondary" onclick="document.getElementById('req-type-select').classList.remove('hidden');document.getElementById('req-form-area').classList.add('hidden');document.getElementById('req-sheet-title').textContent='Send Request';">← Back</button>
+      <button class="btn btn-primary" onclick="submitRequest('${type}')">Submit Request</button>
+    </div>`;
+}
+
+async function submitRequest(type) {
+  const form = REQUEST_FORMS[type];
+  const details = {};
+  let summary = '';
+
+  for (const f of form.fields) {
+    const el = document.getElementById(f.id);
+    if (!el) continue;
+    const val = f.type === 'checkbox' ? el.checked : el.value.trim();
+    if (f.req && !val) { showToast('Fill in: ' + f.label); return; }
+    details[f.id] = val;
+    if (val && f.type !== 'checkbox') summary += `${f.label}: ${val}
+`;
+  }
+
+  const btn = document.querySelector('#req-form-area .btn-primary');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  try {
+    // Save formal request
+    const { data: req } = await sb.from('internal_requests').insert({
+      requester_staff_id: currentUser.id,
+      type,
+      title: form.title,
+      details,
+      status: 'pending',
+    }).select().single();
+
+    // Find HR channel and send as a request message
+    const { data: hrMem } = await sb.from('internal_chat_members')
+      .select('chat_id,internal_chats(name)')
+      .eq('staff_id', currentUser.id);
+    const hrChat = (hrMem||[]).find(m => (m.internal_chats?.name||'').includes('HR'));
+
+    if (hrChat) {
+      await sb.from('internal_messages').insert({
+        chat_id: hrChat.chat_id,
+        sender_staff_id: currentUser.id,
+        type: 'request',
+        content: `${form.title}
+
+${summary.trim()}`,
+        metadata: { request_type: type, request_id: req?.id, status: 'pending' }
+      });
+    }
+
+    closeSheet('sheet-request');
+    showToast('✅ Request submitted to HR');
+  } catch(e) { showToast('Error: ' + e.message); }
+  btn.disabled = false; btn.textContent = 'Submit Request';
+}
+
+// ── Badge poll ──
+function startChatBadgePoll() {
+  setInterval(async () => {
+    if (!currentUser || currentChatId) return; // don't poll if in a conversation
+    const { data: mems } = await sb.from('internal_chat_members')
+      .select('chat_id,last_read_at').eq('staff_id', currentUser.id);
+    if (!mems?.length) return;
+    const chatIds = mems.map(m=>m.chat_id);
+    const { data: unread } = await sb.from('internal_messages')
+      .select('id,chat_id,created_at').in('chat_id', chatIds)
+      .eq('is_deleted', false).neq('sender_staff_id', currentUser.id);
+    const total = (unread||[]).filter(msg => {
+      const m = mems.find(mem=>mem.chat_id===msg.chat_id);
+      return m && new Date(msg.created_at) > new Date(m.last_read_at||0);
+    }).length;
+    const badge = document.getElementById('chat-badge');
+    if (badge) { badge.textContent = total; badge.classList.toggle('hidden', total===0); }
+  }, 15000);
+}
+
+// ── Utils ──
+function fmtMsgTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  if ((now-d) < 7*24*60*60*1000) return d.toLocaleDateString('en-IN',{weekday:'short'});
+  return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+}
+
+function fmtDuration(sec) {
+  const m = Math.floor(sec/60), s = sec%60;
+  return m+':'+String(s).padStart(2,'0');
+}
+
 </script>
 </body>
 </html>
