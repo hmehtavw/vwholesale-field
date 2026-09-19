@@ -622,9 +622,9 @@ input[type=file] { display: none; }
             <div class="mono" style="font-size:22px;font-weight:700;color:var(--success);" id="team-on-target">—</div>
             <div style="font-size:11px;color:var(--text3);">On target</div>
           </div>
-          <div>
+          <div onclick="openAlertsSheet()" style="cursor:pointer;">
             <div class="mono" style="font-size:22px;font-weight:700;color:var(--warning);" id="team-alerts">—</div>
-            <div style="font-size:11px;color:var(--text3);">Alerts</div>
+            <div style="font-size:11px;color:var(--text3);">Alerts ↗</div>
           </div>
         </div>
       </div>
@@ -735,6 +735,20 @@ input[type=file] { display: none; }
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ALERTS SHEET -->
+  <div class="sheet-backdrop" id="sheet-alerts">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">⚠️ Active Alerts</div>
+        <button class="sheet-close" onclick="closeSheet('sheet-alerts')">✕</button>
+      </div>
+      <div class="sheet-body" id="alerts-sheet-body">
+        <div style="text-align:center;padding:24px;color:var(--text3);">Loading…</div>
+      </div>
     </div>
   </div>
 
@@ -4157,6 +4171,73 @@ async function saveAssignment() {
   } catch(e) { showToast('Error: '+e.message); }
   btn.disabled = false; btn.textContent = 'Assign Visit';
 }
+
+async function openAlertsSheet() {
+  openSheet('sheet-alerts');
+  const el = document.getElementById('alerts-sheet-body');
+  if (!el) return;
+
+  const { data: alerts } = await sb.from('field_alerts')
+    .select('id,alert_type,triggered_at,context,staff_id')
+    .is('resolved_at', null)
+    .order('triggered_at', { ascending: false })
+    .limit(20);
+
+  if (!alerts?.length) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--success);font-size:15px;">✅ No active alerts<br><span style="color:var(--text3);font-size:13px;margin-top:6px;display:block;">All clear</span></div>';
+    return;
+  }
+
+  const alertLabels = {
+    no_location_signal: { icon: '📡', label: 'No Location Signal', color: 'var(--danger)' },
+    stationary_warning: { icon: '⏸️', label: 'Not Moving', color: 'var(--warning)' },
+    stationary_escalation: { icon: '🚨', label: 'Stationary Too Long', color: 'var(--danger)' },
+    target_miss_risk: { icon: '🎯', label: 'Target Risk', color: 'var(--warning)' },
+    no_punchin: { icon: '🕐', label: 'Not Punched In', color: 'var(--danger)' },
+  };
+
+  el.innerHTML = alerts.map(a => {
+    const info = alertLabels[a.alert_type] || { icon: '⚠️', label: a.alert_type, color: 'var(--warning)' };
+    const ctx = a.context || {};
+    const ago = Math.round((Date.now() - new Date(a.triggered_at)) / 60000);
+    const agoStr = ago < 60 ? ago + 'm ago' : Math.round(ago/60) + 'h ago';
+
+    let detail = '';
+    if (ctx.rep_name) detail += ctx.rep_name;
+    if (ctx.visits_so_far !== undefined) detail += ` — ${ctx.visits_so_far}/${ctx.target || '?'} visits`;
+    if (ctx.minutes_since_punch) detail += ` — ${ctx.minutes_since_punch}min since punch-in`;
+
+    return `<div style="display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid var(--border2);">
+      <div style="width:38px;height:38px;border-radius:50%;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${info.icon}</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:${info.color};">${info.label}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">${detail}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;">${agoStr}</div>
+      </div>
+      <button onclick="resolveAlert(${a.id}, this)"
+        style="padding:6px 10px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;flex-shrink:0;">
+        Resolve
+      </button>
+    </div>`;
+  }).join('');
+}
+
+async function resolveAlert(alertId, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  await sb.from('field_alerts')
+    .update({ resolved_at: new Date().toISOString(), resolution_note: 'Manually resolved by manager' })
+    .eq('id', alertId);
+  // Remove from DOM
+  btn.closest('div[style*="border-bottom"]').style.opacity = '0.3';
+  btn.textContent = '✓';
+  // Refresh count
+  const { data: remaining } = await sb.from('field_alerts').select('id').is('resolved_at', null);
+  const cnt = remaining?.length || 0;
+  const el = document.getElementById('team-alerts');
+  if (el) el.textContent = cnt || '—';
+}
+window.resolveAlert = resolveAlert;
 
 function getCycleStart() {
   const now = new Date(); const day = now.getDate();
