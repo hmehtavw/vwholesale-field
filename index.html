@@ -2321,7 +2321,7 @@ async function loadTodayData() {
 
   const count = visits?.length || 0;
   document.getElementById('stat-visits').textContent = count;
-  const target = getDesignationTarget();
+  const target = await getDesignationTarget();
   const pct = Math.min(100, Math.round(count / target * 100));
   document.getElementById('visits-bar').style.width = pct + '%';
   if (pct >= 100) document.getElementById('visits-bar').classList.add('success');
@@ -2364,10 +2364,24 @@ async function loadTodayData() {
   }
 }
 
-function getDesignationTarget() {
-  const desig = (currentUser.designation || currentUser.role || '').toLowerCase();
-  if (desig.includes('mapping')) return 25;
-  return 15;
+async function getDesignationTarget() {
+  const desig = currentUser.designation || currentUser.role || 'Field Executive';
+
+  // Try exact match first, then partial match
+  let { data } = await sb.from('field_incentive_rules')
+    .select('daily_visit_target').eq('designation', desig).maybeSingle();
+
+  if (!data?.daily_visit_target) {
+    // Partial match — "Team Leader Retail" → "Team Leader"
+    const { data: all } = await sb.from('field_incentive_rules').select('designation,daily_visit_target');
+    const match = (all||[]).find(r =>
+      desig.toLowerCase().includes(r.designation.toLowerCase()) ||
+      r.designation.toLowerCase().includes(desig.toLowerCase().split(' ')[0])
+    );
+    data = match || null;
+  }
+
+  return data?.daily_visit_target || (desig.toLowerCase().includes('mapping') ? 25 : 15);
 }
 
 function updateIncentiveTile(visits, target) {
