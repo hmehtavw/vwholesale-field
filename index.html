@@ -3999,11 +3999,14 @@ async function loadCatalogs() {
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);">Loading catalogs…</div>';
 
-  const { data: cats } = await sb.from('catalogs')
-    .select('id,name,brand,category,type,file_url,description,is_team_visible,updated_at')
-    .eq('is_team_visible', true)
+  const { data: cats, error: catErr } = await sb.from('catalogs')
+    .select('id,name,brand,category,type,file_url,description,updated_at')
     .order('created_at', { ascending: false });
 
+  if (catErr) {
+    el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text3);">Error loading catalogs: ${catErr.message}</div>`;
+    return;
+  }
   if (!cats?.length) {
     el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);">No catalogs available yet.</div>';
     return;
@@ -4711,7 +4714,7 @@ function showTab(tab) {
   if (tab === 'map') loadMapTab();
   if (tab === 'leads') loadLeads();
   if (tab === 'catalogs') loadCatalogs();
-  if (tab === 'chat') initChat();
+  if (tab === 'chat') { ensureChatMemberships().then(() => initChat()); }
 }
 
 function openSheet(id) { document.getElementById(id).classList.add('open'); }
@@ -5103,10 +5106,26 @@ let isRecording = false;
 // ── Init ──
 async function initChat() {
   if (!currentUser) return;
+  await ensureChatMemberships();
   await loadAllStaff();
   await loadChatList();
   startChatBadgePoll();
-  startRealtimeSync(); // Auto-sync all data via Supabase Realtime
+  startRealtimeSync();
+}
+
+async function ensureChatMemberships() {
+  if (!currentUser) return;
+  const { data: mems } = await sb.from('internal_chat_members')
+    .select('chat_id').eq('staff_id', currentUser.id);
+  if (mems?.length) return;
+  const { data: chats } = await sb.from('internal_chats')
+    .select('id,name').in('name', ['Field Team', 'HR & Admin']);
+  if (!chats?.length) return;
+  for (const chat of chats) {
+    await sb.from('internal_chat_members').insert({
+      chat_id: chat.id, staff_id: currentUser.id, role: 'member'
+    }).catch(() => {});
+  }
 }
 
 async function loadAllStaff() {
