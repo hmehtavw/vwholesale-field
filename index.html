@@ -538,13 +538,66 @@ input[type=file] { display: none; }
   <!-- VISITS TAB -->
   <div class="body hidden" id="tab-visits" style="padding-bottom: calc(var(--nav-h) + 16px);">
     <div class="pad">
-      <div class="section-header">
-        <div class="section-title">Today's visits</div>
-        <div id="visits-count-badge" style="font-size:13px;color:var(--text2);"></div>
+
+      <!-- Sub-tab toggle -->
+      <div style="display:flex;background:var(--surface2);border-radius:12px;padding:3px;margin-bottom:14px;gap:3px;">
+        <button id="subtab-visits-btn" onclick="switchVisitsSubtab('visits')"
+          style="flex:1;padding:9px;border-radius:9px;border:none;background:var(--accent);color:var(--base);font-weight:700;font-size:13px;cursor:pointer;">
+          📍 Visits
+        </button>
+        <button id="subtab-followup-btn" onclick="switchVisitsSubtab('followup')"
+          style="flex:1;padding:9px;border-radius:9px;border:none;background:transparent;color:var(--text2);font-weight:600;font-size:13px;cursor:pointer;position:relative;">
+          🔄 Follow-ups
+          <span id="followup-badge" style="display:none;position:absolute;top:5px;right:10px;background:var(--danger);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 5px;min-width:16px;text-align:center;"></span>
+        </button>
       </div>
-      <div id="visits-list">
-        <div style="text-align:center;padding:40px 0;color:var(--text3);font-size:14px;">No visits yet today</div>
+
+      <!-- VISITS sub-panel -->
+      <div id="subtab-visits">
+        <div class="section-header">
+          <div class="section-title">Today's visits</div>
+          <div id="visits-count-badge" style="font-size:13px;color:var(--text2);"></div>
+        </div>
+        <div id="visits-list">
+          <div style="text-align:center;padding:40px 0;color:var(--text3);font-size:14px;">No visits yet today</div>
+        </div>
       </div>
+
+      <!-- FOLLOW-UP sub-panel -->
+      <div id="subtab-followup" class="hidden">
+        <!-- Day selector -->
+        <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none;">
+          <button id="fuday-overdue" onclick="selectFollowupDay('overdue')"
+            style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--danger);background:rgba(239,68,68,.12);color:var(--danger);font-size:12px;font-weight:700;cursor:pointer;">
+            ⚠️ Overdue
+          </button>
+          <button id="fuday-today" onclick="selectFollowupDay('today')"
+            style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--accent);background:var(--accent);color:var(--base);font-size:12px;font-weight:700;cursor:pointer;">
+            Today
+          </button>
+          <button id="fuday-tomorrow" onclick="selectFollowupDay('tomorrow')"
+            style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;">
+            Tomorrow
+          </button>
+          <button id="fuday-week" onclick="selectFollowupDay('week')"
+            style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;">
+            This week
+          </button>
+          <button id="fuday-all" onclick="selectFollowupDay('all')"
+            style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;">
+            All
+          </button>
+        </div>
+
+        <!-- Summary chips -->
+        <div id="followup-summary" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;"></div>
+
+        <!-- Follow-up list -->
+        <div id="followup-list">
+          <div style="text-align:center;padding:32px;color:var(--text3);">Loading…</div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -4433,6 +4486,189 @@ async function resolveAlert(alertId, btn) {
   if (el) el.textContent = cnt || '—';
 }
 window.resolveAlert = resolveAlert;
+
+// ══════════════════════════════════════════════════════════
+// FOLLOW-UP PLANNER
+// ══════════════════════════════════════════════════════════
+let _followupDay = 'today';
+let _allFollowups = [];
+
+function switchVisitsSubtab(tab) {
+  const isVisits = tab === 'visits';
+  document.getElementById('subtab-visits').classList.toggle('hidden', !isVisits);
+  document.getElementById('subtab-followup').classList.toggle('hidden', isVisits);
+
+  const vBtn = document.getElementById('subtab-visits-btn');
+  const fBtn = document.getElementById('subtab-followup-btn');
+  if (vBtn) {
+    vBtn.style.background = isVisits ? 'var(--accent)' : 'transparent';
+    vBtn.style.color = isVisits ? 'var(--base)' : 'var(--text2)';
+  }
+  if (fBtn) {
+    fBtn.style.background = isVisits ? 'transparent' : 'var(--accent)';
+    fBtn.style.color = isVisits ? 'var(--text2)' : 'var(--base)';
+  }
+
+  if (!isVisits) loadFollowups();
+}
+
+function selectFollowupDay(day) {
+  _followupDay = day;
+  // Update button styles
+  ['overdue','today','tomorrow','week','all'].forEach(d => {
+    const btn = document.getElementById('fuday-' + d);
+    if (!btn) return;
+    const isActive = d === day;
+    btn.style.background = isActive ? 'var(--accent)' : 'transparent';
+    btn.style.color = isActive ? 'var(--base)' : (d === 'overdue' ? 'var(--danger)' : 'var(--text2)');
+    btn.style.borderColor = isActive ? 'var(--accent)' : (d === 'overdue' ? 'var(--danger)' : 'var(--border)');
+  });
+  renderFollowupList();
+}
+
+async function loadFollowups() {
+  const el = document.getElementById('followup-list');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);">Loading…</div>';
+
+  const { data } = await sb.from('field_visits')
+    .select('id,site_address,construction_stage,ai_stage_detected,next_action_date,created_at,site_contacts,ai_requirements,visit_quality_score,customer_name,is_followup,converted_invoice_id,site_lat,site_lng')
+    .eq('staff_id', currentUser.id)
+    .not('next_action_date', 'is', null)
+    .order('next_action_date', { ascending: true })
+    .limit(200);
+
+  _allFollowups = data || [];
+
+  // Update badge
+  const today = new Date().toISOString().split('T')[0];
+  const overdue = _allFollowups.filter(v => v.next_action_date < today && !v.converted_invoice_id).length;
+  const dueToday = _allFollowups.filter(v => v.next_action_date === today && !v.converted_invoice_id).length;
+  const total = overdue + dueToday;
+  const badge = document.getElementById('followup-badge');
+  if (badge) { badge.textContent = total; badge.style.display = total ? '' : 'none'; }
+
+  // Summary chips
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const weekEnd = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+  const summaryEl = document.getElementById('followup-summary');
+  if (summaryEl) summaryEl.innerHTML = [
+    { label: '⚠️ Overdue', count: overdue, color: 'var(--danger)', day: 'overdue' },
+    { label: '📅 Today', count: dueToday, color: 'var(--accent)', day: 'today' },
+    { label: '📆 Tomorrow', count: _allFollowups.filter(v=>v.next_action_date===tomorrow&&!v.converted_invoice_id).length, color: 'var(--success)', day: 'tomorrow' },
+    { label: '📊 This week', count: _allFollowups.filter(v=>v.next_action_date<=weekEnd&&v.next_action_date>today&&!v.converted_invoice_id).length, color: 'var(--text2)', day: 'week' },
+  ].filter(c=>c.count>0).map(c=>`
+    <button onclick="selectFollowupDay('${c.day}')"
+      style="padding:5px 12px;border-radius:16px;background:${c.color}22;border:1px solid ${c.color}44;color:${c.color};font-size:12px;font-weight:700;cursor:pointer;">
+      ${c.label}: ${c.count}
+    </button>`).join('');
+
+  renderFollowupList();
+}
+
+function renderFollowupList() {
+  const el = document.getElementById('followup-list');
+  if (!el) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const weekEnd = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+
+  let filtered = _allFollowups.filter(v => !v.converted_invoice_id);
+  if (_followupDay === 'overdue') filtered = filtered.filter(v => v.next_action_date < today);
+  else if (_followupDay === 'today') filtered = filtered.filter(v => v.next_action_date === today);
+  else if (_followupDay === 'tomorrow') filtered = filtered.filter(v => v.next_action_date === tomorrow);
+  else if (_followupDay === 'week') filtered = filtered.filter(v => v.next_action_date > today && v.next_action_date <= weekEnd);
+
+  if (!filtered.length) {
+    const msgs = {
+      overdue: '✅ No overdue follow-ups!',
+      today: '✅ No follow-ups due today',
+      tomorrow: '✅ Nothing scheduled for tomorrow',
+      week: '✅ No follow-ups this week',
+      all: 'No follow-ups scheduled',
+    };
+    el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--success);font-size:14px;">${msgs[_followupDay]||'All clear'}</div>`;
+    return;
+  }
+
+  // Group by date
+  const grouped = {};
+  filtered.forEach(v => {
+    const d = v.next_action_date;
+    if (!grouped[d]) grouped[d] = [];
+    grouped[d].push(v);
+  });
+
+  el.innerHTML = Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)).map(([date, visits]) => {
+    const isToday = date === today;
+    const isTomorrow = date === tomorrow;
+    const isPast = date < today;
+    const dateLabel = isPast
+      ? `⚠️ ${new Date(date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})} (Overdue)`
+      : isToday ? '📅 Today'
+      : isTomorrow ? '📆 Tomorrow'
+      : new Date(date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+    const headerColor = isPast ? 'var(--danger)' : isToday ? 'var(--accent)' : 'var(--text2)';
+
+    return `
+      <div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:13px;font-weight:800;color:${headerColor};letter-spacing:.02em;">${dateLabel}</div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;">${visits.length} site${visits.length>1?'s':''}</div>
+        </div>
+        ${visits.map(v => {
+          const contact = v.site_contacts?.[0];
+          const stage = v.ai_stage_detected || v.construction_stage || '—';
+          const score = Math.round(v.visit_quality_score||0);
+          const scoreColor = score>=90?'var(--success)':score>=60?'var(--accent)':'var(--danger)';
+          const topReq = v.ai_requirements?.[0] || '';
+          const phone = contact?.phone?.replace(/\D/g,'') || '';
+
+          return `
+          <div class="card" style="margin-bottom:8px;border-left:3px solid ${isPast?'var(--danger)':isToday?'var(--accent)':'var(--border)'};padding:14px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.site_address||'Site Visit'}</div>
+                <div style="display:flex;gap:8px;margin-top:4px;align-items:center;flex-wrap:wrap;">
+                  <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--surface2);color:var(--text2);">${stageLabel(stage)}</span>
+                  <span style="font-size:11px;color:${scoreColor};font-weight:700;">${score}%</span>
+                  ${topReq ? `<span style="font-size:11px;color:var(--accent);">🏗️ ${topReq}</span>` : ''}
+                </div>
+                ${contact ? `<div style="font-size:12px;color:var(--text2);margin-top:6px;">👤 ${contact.name||''} ${contact.role?'('+contact.role+')':''}</div>` : ''}
+              </div>
+              <div style="font-size:22px;">${isPast?'🔴':isToday?'🟡':'🟢'}</div>
+            </div>
+
+            <div style="display:flex;gap:6px;margin-top:10px;">
+              <button onclick="openFollowUpVisit(${v.id})"
+                style="flex:1;padding:9px;border-radius:8px;background:var(--accent);border:none;color:var(--base);font-size:13px;font-weight:700;cursor:pointer;">
+                🔄 Log Follow-up
+              </button>
+              ${phone ? `
+              <a href="tel:+91${phone}"
+                style="padding:9px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:13px;text-decoration:none;display:flex;align-items:center;">
+                📞
+              </a>
+              <a href="https://wa.me/91${phone}" target="_blank"
+                style="padding:9px 12px;border-radius:8px;background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.3);color:#25D366;font-size:13px;text-decoration:none;display:flex;align-items:center;">
+                📲
+              </a>` : ''}
+              ${v.site_lat ? `
+              <a href="https://www.google.com/maps?q=${v.site_lat},${v.site_lng}" target="_blank"
+                style="padding:9px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:13px;text-decoration:none;display:flex;align-items:center;">
+                📍
+              </a>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  }).join('');
+}
+
+function stageLabel(s) {
+  const m = { plastering:'Plastering', tiling_ready:'Tiling Ready', tiling_in_progress:'Tiling', brick_work:'Brick Work', finishing:'Finishing', structure:'Structure', foundation:'Foundation', renovation:'Renovation' };
+  return m[s] || s || '—';
+}
 
 function getCycleStart() {
   const now = new Date(); const day = now.getDate();
