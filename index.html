@@ -1253,32 +1253,39 @@ input[type=file] { display: none; }
         <div style="font-size:16px;font-weight:700;margin-bottom:16px;">📍 Site Location</div>
 
         <div class="form-group">
-          <label class="form-label">Site name / project name</label>
-          <input class="form-input" id="vs-site-name" type="text" placeholder="e.g. Krishna Residency Block B">
+          <label class="form-label">Site / Owner name <span style="color:var(--text3);font-weight:400;">(optional)</span></label>
+          <input class="form-input" id="vs-site-name" type="text" placeholder="e.g. Ravi Kumar's house, Krishna Residency B">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Pin site on map <span class="req">*</span></label>
+          <label class="form-label">GPS Location <span class="req">*</span></label>
           <div class="map-container" id="visit-map">
             <div class="map-placeholder">
               <div style="font-size:28px;">📍</div>
-              <div>Tap to set site location</div>
-              <button class="btn btn-sm btn-secondary mt-8" onclick="getCurrentLocationForVisit()" style="width:auto;padding:8px 16px;">Use my location</button>
+              <div style="font-size:14px;font-weight:600;">Tap to capture site location</div>
+              <div style="font-size:12px;color:var(--text3);margin:4px 0 12px;">GPS pinpoints the exact house — no typing needed</div>
+              <button class="btn btn-primary" onclick="getCurrentLocationForVisit()" style="width:auto;padding:10px 24px;">
+                📍 Use My GPS Location
+              </button>
             </div>
           </div>
-          <div class="map-pin-info hidden" id="visit-pin-info">
-            <span id="visit-pin-addr">—</span>
+
+          <!-- Auto-filled address (read-only, from reverse geocode) -->
+          <div id="visit-pin-info" class="hidden" style="margin-top:10px;">
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+              <div style="display:flex;align-items:flex-start;gap:10px;">
+                <div style="font-size:20px;margin-top:2px;">📍</div>
+                <div style="flex:1;">
+                  <div style="font-size:13px;font-weight:700;color:var(--text);" id="visit-pin-addr-full">Fetching address…</div>
+                  <div style="font-size:11px;color:var(--text3);margin-top:3px;" id="visit-pin-coords">—</div>
+                </div>
+                <button onclick="getCurrentLocationForVisit()" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;flex-shrink:0;">Re-pin</button>
+              </div>
+            </div>
+            <!-- Hidden inputs to store the data -->
+            <input type="hidden" id="vs-area">
+            <input type="hidden" id="vs-city">
           </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Area / locality <span class="req">*</span></label>
-          <input class="form-input" id="vs-area" type="text" placeholder="e.g. Bhavanipuram, Vijayawada">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">City <span class="req">*</span></label>
-          <input class="form-input" id="vs-city" type="text" placeholder="Vijayawada">
         </div>
 
         <button class="btn btn-primary" onclick="visitNextStep(2)">Next: Site Details →</button>
@@ -2769,8 +2776,7 @@ function visitNextStep(step, silent) {
 
 function validateStep(step) {
   if (step === 1) {
-    if (!visitPinLat) { showToast('Please pin the site location on map'); return false; }
-    if (!document.getElementById('vs-area').value.trim()) { showToast('Enter the area / locality'); return false; }
+    if (!visitPinLat) { showToast('Tap "Use My GPS Location" to pin the site'); return false; }
     return true;
   }
   if (step === 2) {
@@ -2997,24 +3003,95 @@ function removePhotoSlot(id) {
   visitPhotos = visitPhotos.filter(p => p.slotId !== id);
 }
 
-// ── Location for visit map ──
+// ── Location for visit map — GPS-first, auto-geocode ──
 function getCurrentLocationForVisit() {
+  const mapEl = document.getElementById('visit-map');
+  if (mapEl) mapEl.innerHTML = `
+    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--text3);">
+      <div style="font-size:28px;animation:pulse 1s infinite;">📡</div>
+      <div style="font-size:13px;">Getting GPS location…</div>
+    </div>`;
+
   getCurrentGPS(async pos => {
     visitPinLat = pos.coords.latitude;
     visitPinLng = pos.coords.longitude;
-    document.getElementById('visit-pin-info').classList.remove('hidden');
-    document.getElementById('visit-pin-addr').textContent = 
-      `${visitPinLat.toFixed(5)}, ${visitPinLng.toFixed(5)} (GPS)`;
-    document.getElementById('visit-map').innerHTML = `
-      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:var(--success);">
-        <div style="font-size:32px;">📍</div>
-        <div style="font-size:13px;">Location captured</div>
-        <div style="font-size:11px;color:var(--text3);">${visitPinLat.toFixed(4)}, ${visitPinLng.toFixed(4)}</div>
-      </div>
-    `;
+    const accuracy = Math.round(pos.coords.accuracy || 0);
+
+    // Show map with pin
+    if (mapEl) mapEl.innerHTML = `
+      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;">
+        <div style="font-size:36px;">📍</div>
+        <div style="font-size:13px;font-weight:700;color:var(--success);">Location captured</div>
+        <div style="font-size:11px;color:var(--text3);">±${accuracy}m accuracy</div>
+        <a href="https://www.google.com/maps?q=${visitPinLat},${visitPinLng}" target="_blank"
+          style="font-size:11px;color:var(--accent);text-decoration:none;margin-top:4px;">Open in Maps ↗</a>
+      </div>`;
+
+    // Show coords immediately
+    document.getElementById('visit-pin-info')?.classList.remove('hidden');
+    const coordsEl = document.getElementById('visit-pin-coords');
+    if (coordsEl) coordsEl.textContent = `${visitPinLat.toFixed(6)}, ${visitPinLng.toFixed(6)} · ±${accuracy}m`;
+
+    // Reverse geocode using Google Maps API
+    const addrEl = document.getElementById('visit-pin-addr-full');
+    if (addrEl) addrEl.textContent = 'Getting address…';
+
+    try {
+      const geoRes = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${visitPinLat},${visitPinLng}&key=AIzaSyBkq4nz2ruJUplPk2KVr2eB6tl-ixQB_-w&language=en&region=IN`
+      );
+      const geoData = await geoRes.json();
+
+      if (geoData.status === 'OK' && geoData.results?.length) {
+        const result = geoData.results[0];
+        const fullAddress = result.formatted_address;
+
+        // Extract components
+        const components = result.address_components || [];
+        const getComp = (type) => components.find(c => c.types.includes(type))?.long_name || '';
+        const sublocality = getComp('sublocality_level_1') || getComp('sublocality') || getComp('neighborhood');
+        const locality = getComp('locality');
+        const district = getComp('administrative_area_level_3') || getComp('administrative_area_level_2');
+        const city = locality || district || 'Vijayawada';
+        const area = sublocality || locality || '';
+
+        // Set hidden fields
+        const areaEl = document.getElementById('vs-area');
+        const cityEl = document.getElementById('vs-city');
+        if (areaEl) areaEl.value = area ? `${area}, ${city}` : city;
+        if (cityEl) cityEl.value = city;
+
+        // Display clean address
+        if (addrEl) addrEl.textContent = fullAddress.replace(', India', '').replace(/\d{6}/, '').trim();
+
+      } else {
+        // Fallback: use coordinates as address
+        const fallback = `${visitPinLat.toFixed(5)}, ${visitPinLng.toFixed(5)}`;
+        if (addrEl) addrEl.textContent = fallback;
+        const areaEl = document.getElementById('vs-area');
+        const cityEl = document.getElementById('vs-city');
+        if (areaEl) areaEl.value = fallback;
+        if (cityEl) cityEl.value = 'Vijayawada';
+      }
+    } catch(e) {
+      const fallback = `${visitPinLat.toFixed(5)}, ${visitPinLng.toFixed(5)}`;
+      if (addrEl) addrEl.textContent = fallback;
+      const areaEl = document.getElementById('vs-area');
+      if (areaEl) areaEl.value = fallback;
+    }
+
     // Check for nearby previous visits
     await checkNearbyVisits(visitPinLat, visitPinLng);
-  }, () => showToast('Could not get location — check GPS permissions'));
+
+  }, () => {
+    if (mapEl) mapEl.innerHTML = `
+      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--danger);">
+        <div style="font-size:28px;">❌</div>
+        <div style="font-size:13px;">GPS permission denied</div>
+        <button class="btn btn-secondary btn-sm" onclick="getCurrentLocationForVisit()" style="width:auto;margin-top:8px;">Try again</button>
+      </div>`;
+    showToast('Enable location permission for this site');
+  });
 }
 
 // ── Nearby visit duplicate check ──
@@ -3358,7 +3435,11 @@ async function submitVisit(forceSubmit = false, crossTerritoryReason = null) {
     const visitData = {
       staff_id: currentUser.id,
       executive_name: currentUser.name,
-      site_address: `${document.getElementById('vs-area').value}, ${document.getElementById('vs-city').value}`,
+      site_address: (() => {
+        const siteName = document.getElementById('vs-site-name')?.value?.trim();
+        const geocodedAddr = document.getElementById('visit-pin-addr-full')?.textContent || document.getElementById('vs-area')?.value || '';
+        return siteName ? `${siteName} — ${geocodedAddr}` : geocodedAddr;
+      })(),
       site_lat: visitPinLat, site_lng: visitPinLng,
       customer_name: document.getElementById('vs-site-name').value || null,
       check_in_at: new Date().toISOString(),
