@@ -3929,6 +3929,7 @@ function lakh(n) { return n ? (n / 100000).toFixed(1) : '—'; }
 async function signOut() {
   if (!confirm('Sign out? You will need OTP to sign in again.')) return;
   stopLocationTracking();
+  stopRealtimeSync();
   currentUser = null; currentAttendance = null;
   localStorage.removeItem('vw_field_staff');
   showScreen('screen-login');
@@ -4611,6 +4612,128 @@ function openRouteInGMaps() {
   if (window._gmapsRouteUrl) window.open(window._gmapsRouteUrl, '_blank');
 }
 
+// ══════════════════════════════════════════════════════════
+// REALTIME AUTO-SYNC — Supabase Realtime subscriptions
+// No manual refresh needed anywhere in the field app
+// ══════════════════════════════════════════════════════════
+let _realtimeChannels = [];
+
+function startRealtimeSync() {
+  if (!currentUser) return;
+  stopRealtimeSync(); // Clear any existing
+
+  // 1. Field visits — reload home stats + visits tab when any visit changes
+  const visitsChannel = sb.channel('field_visits_changes')
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'field_visits',
+      filter: `staff_id=eq.${currentUser.id}`
+    }, (payload) => {
+      console.log('[Realtime] visit change:', payload.eventType);
+      // Refresh whichever tab is active
+      const activeTab = document.querySelector('.nav-item.active')?.dataset?.tab;
+      if (activeTab === 'home' || activeTab === 'visits' || !activeTab) {
+        loadHomeStats();
+        if (activeTab === 'visits') loadVisitsList();
+      }
+      showSyncDot();
+    })
+    .subscribe();
+
+  // 2. Field assignments — reload home + team tab when assigned visit changes
+  const assignChannel = sb.channel('assignments_changes')
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'field_visit_assignments',
+      filter: `assigned_to_staff_id=eq.${currentUser.id}`
+    }, (payload) => {
+      console.log('[Realtime] assignment change:', payload.eventType);
+      loadHomeStats();
+      const activeTab = document.querySelector('.nav-item.active')?.dataset?.tab;
+      if (activeTab === 'team') loadTeamData();
+      showSyncDot();
+    })
+    .subscribe();
+
+  // 3. Internal messages — reload chat badge + messages if chat is open
+  const chatChannel = sb.channel('chat_messages_changes')
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'internal_messages'
+    }, (payload) => {
+      const msg = payload.new;
+      // If this message is in my current chat — refresh messages
+      if (currentChatId && msg.chat_id === currentChatId && msg.sender_staff_id !== currentUser.id) {
+        refreshMessages(currentChatId);
+      }
+      // Update unread badge
+      updateChatBadge();
+    })
+    .subscribe();
+
+  // 4. Attendance — refresh punch state if it changes (e.g. forced punch-out from admin)
+  const attendanceChannel = sb.channel('attendance_changes')
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'attendance',
+      filter: `staff_id=eq.${currentUser.id}`
+    }, (payload) => {
+      console.log('[Realtime] attendance change:', payload.eventType);
+      checkTodayAttendance();
+    })
+    .subscribe();
+
+  // 5. Field alerts — show instant toast if new alert for this user
+  const alertChannel = sb.channel('alerts_changes')
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'field_alerts',
+      filter: `staff_id=eq.${currentUser.id}`
+    }, (payload) => {
+      const alert = payload.new;
+      const messages = {
+        no_location_signal: '📡 Admin: No location signal detected',
+        stationary_warning: '⏸️ Admin: You appear stationary for 30+ min',
+        target_miss_risk: '🎯 You may miss today\u2019s visit target \u2014 keep going!',
+      };
+      showToast(messages[alert.alert_type] || '⚠️ New alert from admin', 'warn');
+    })
+    .subscribe();
+
+  _realtimeChannels = [visitsChannel, assignChannel, chatChannel, attendanceChannel, alertChannel];
+  console.log('[Realtime] All subscriptions active');
+}
+
+function stopRealtimeSync() {
+  _realtimeChannels.forEach(ch => { try { sb.removeChannel(ch); } catch(e){} });
+  _realtimeChannels = [];
+}
+
+async function updateChatBadge() {
+  if (!currentUser) return;
+  const { data: mems } = await sb.from('internal_chat_members')
+    .select('chat_id,last_read_at').eq('staff_id', currentUser.id);
+  if (!mems?.length) return;
+  const chatIds = mems.map(m=>m.chat_id);
+  const { data: unread } = await sb.from('internal_messages')
+    .select('id,chat_id,created_at').in('chat_id', chatIds)
+    .eq('is_deleted',false).neq('sender_staff_id', currentUser.id);
+  const total = (unread||[]).filter(msg => {
+    const m = mems.find(mm=>mm.chat_id===msg.chat_id);
+    return m && new Date(msg.created_at) > new Date(m.last_read_at||0);
+  }).length;
+  const badge = document.getElementById('chat-badge');
+  if (badge) { badge.textContent = total; badge.classList.toggle('hidden', total===0); }
+}
+
+function showSyncDot() {
+  // Flash a small green dot to show data synced
+  let dot = document.getElementById('sync-indicator');
+  if (!dot) {
+    dot = document.createElement('div');
+    dot.id = 'sync-indicator';
+    dot.style.cssText = 'position:fixed;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--success);z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;';
+    document.body.appendChild(dot);
+  }
+  dot.style.opacity = '1';
+  setTimeout(() => { dot.style.opacity = '0'; }, 1500);
+}
+
 function initClockTick() {
   const update = () => {
     const now = new Date();
@@ -4747,6 +4870,7 @@ async function initChat() {
   await loadAllStaff();
   await loadChatList();
   startChatBadgePoll();
+  startRealtimeSync(); // Auto-sync all data via Supabase Realtime
 }
 
 async function loadAllStaff() {
