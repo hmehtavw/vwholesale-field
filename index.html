@@ -3475,7 +3475,7 @@ function showQualityGate(score, checks) {
 async function submitVisit(forceSubmit = false, crossTerritoryReason = null) {
   if (!visitPhotos.length) { showToast('Add at least 1 site photo'); return; }
 
-  // Quality gate — min 90% for incentive qualification
+  // Quality gate — compute ONCE
   const { score, checks } = computeQualityScore();
   if (score < 90 && !forceSubmit) {
     showQualityGate(score, checks);
@@ -3492,71 +3492,75 @@ async function submitVisit(forceSubmit = false, crossTerritoryReason = null) {
   }
 
   const btn = document.getElementById('btn-submit-visit');
-  btn.disabled = true; btn.textContent = 'Saving…';
+  btn.disabled = true; btn.textContent = 'Uploading photos…';
 
   try {
-    // Upload photos
-    const photoUrls = [];
-    for (const p of visitPhotos) {
+    // Upload photos — parallel for speed, with progress
+    const totalPhotos = visitPhotos.length;
+    let uploaded = 0;
+    const photoUrls = await Promise.all(visitPhotos.map(async p => {
       const url = await uploadPhoto(p.file, `field_visits/${currentUser.id}/${Date.now()}_${p.slotId}`);
-      photoUrls.push({ slotId: p.slotId, url });
-    }
+      uploaded++;
+      btn.textContent = `Uploading ${uploaded}/${totalPhotos} photos…`;
+      return { slotId: p.slotId, url };
+    }));
+
+    btn.textContent = 'Saving visit…';
 
     const desig = currentUser.designation || currentUser.role || 'Field Executive';
+    const geocodedAddr = document.getElementById('visit-pin-addr-full')?.textContent || document.getElementById('vs-area')?.value || '';
+    const siteName = document.getElementById('vs-site-name')?.value?.trim();
+
     const visitData = {
       staff_id: currentUser.id,
       executive_name: currentUser.name,
-      site_address: (() => {
-        const siteName = document.getElementById('vs-site-name')?.value?.trim();
-        const geocodedAddr = document.getElementById('visit-pin-addr-full')?.textContent || document.getElementById('vs-area')?.value || '';
-        return siteName ? `${siteName} — ${geocodedAddr}` : geocodedAddr;
-      })(),
+      site_address: siteName ? `${siteName} — ${geocodedAddr}` : geocodedAddr,
       site_lat: visitPinLat, site_lng: visitPinLng,
-      customer_name: document.getElementById('vs-site-name').value || null,
+      customer_name: siteName || null,
       check_in_at: new Date().toISOString(),
       check_in_lat: visitPinLat, check_in_lng: visitPinLng,
       status: 'completed',
-      city: document.getElementById('vs-city').value,
+      city: document.getElementById('vs-city')?.value || 'Vijayawada',
       construction_stage: document.getElementById('vs-stage').value,
       project_type: visitProjectType,
       estimated_sqft: parseFloat(document.getElementById('vs-sqft').value) || estimateSqft() || null,
-      estimated_value: parseFloat(document.getElementById('vs-sqft')?.dataset?.estimatedValue) || null,
       site_contacts: visitContacts.filter(c => c.name || c.phone),
       site_photos: photoUrls,
       competitor_products: competitorEntries,
-      competitor_details: decidedBrands.filter(b => b.category || b.brand),
       customer_requirements: customerRequirements,
       dept_flags: deptFlags,
       room_count: { beds: roomCounts.beds, baths: roomCounts.baths, floors: roomCounts.floors, extras: [...roomExtras] },
-      plot_size: document.getElementById('room-plot').value.trim() || null,
-      notes: document.getElementById('vs-notes').value,
-      referral_source: document.getElementById('vs-referral').value,
-      next_action_date: document.getElementById('vs-followup').value,
+      plot_size: document.getElementById('room-plot')?.value?.trim() || null,
+      notes: document.getElementById('vs-notes')?.value || '',
+      next_action_date: document.getElementById('vs-followup')?.value || null,
       next_action: 'follow_up',
       designation_at_visit: desig,
       visit_type: desig.toLowerCase().includes('mapping') ? 'mapping' : desig.toLowerCase().includes('team leader') ? 'tl' : 'field_exec',
-      visit_quality_score: computeQualityScore().score,
-      quality_breakdown: computeQualityScore().checks,
+      visit_quality_score: score,
+      quality_breakdown: checks,
       cross_territory: !!crossTerritoryReason,
       cross_territory_reason: crossTerritoryReason || null
     };
 
-    const { data: visit, error } = await sb.from('field_visits').insert(visitData).select().single();
+    const { data: visit, error } = await sb.from('field_visits').insert(visitData).select('id').single();
     if (error) throw error;
 
-    // Create cross-department tasks for flagged departments
-    if (deptFlags.length > 0) {
-      await createDeptTasks(visit.id, visitData, deptFlags).catch(() => {});
-    }
-
-    // Visit saved — go home immediately, AI runs in background
+    // Visit saved — close sheet immediately, reload home
     closeSheet('sheet-visit');
     showTab('home');
-    await loadTodayData();
-    const deptMsg = deptFlags.length ? ` + ${deptFlags.length} dept task(s) created` : '';
-    showToast('✅ Visit saved! AI analysing photos…' + deptMsg);
+    showToast('✅ Visit saved!');
+    loadTodayData(); // non-blocking
+
+    // Dept tasks — fire and forget
+    if (deptFlags.length > 0) {
+      createDeptTasks(visit.id, visitData, deptFlags).catch(() => {});
+    }
+
+    // AI analysis — delay 3 seconds so phone isn't overwhelmed
     if (photoUrls.length > 0) {
-      runAIAnalysis(visit.id, photoUrls.map(p=>p.url), visitData).catch(() => {});
+      setTimeout(() => {
+        runAIAnalysis(visit.id, photoUrls.map(p=>p.url), visitData).catch(() => {});
+      }, 3000);
     }
     // Always generate follow-up questions (even without photos)
     generateFollowupQuestions(visit.id).catch(() => {});
@@ -3887,8 +3891,8 @@ function getCurrentGPS(success, fail) {
 
 async function uploadPhoto(file, path) {
   if (!file) return null;
-  // Compress before upload
-  const compressed = await compressImage(file, 0.7, 1200);
+  // Aggressive compression for low-memory phones — 800px max, 60% quality
+  const compressed = await compressImage(file, 0.6, 800);
   const { data, error } = await sb.storage.from('field-media').upload(
     path + '.jpg', compressed, { contentType: 'image/jpeg', upsert: true }
   );
