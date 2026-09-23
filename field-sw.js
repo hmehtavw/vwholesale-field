@@ -2,7 +2,7 @@
 // Persistent notification keeps app alive as foreground service
 // Location tracked every 2 min even with screen off
 
-const CACHE_NAME = 'vw-field-v9';
+const CACHE_NAME = 'vw-field-v10';
 const APP_SHELL = ['/field.html', '/field-manifest.json'];
 const PING_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 

@@ -5155,9 +5155,17 @@ function initClockTick() {
 let deferredInstallPrompt = null;
 
 if ('serviceWorker' in navigator) {
+  // Force update check — auto-reload when new SW takes over
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/field-sw.js')
       .then(async reg => {
+        // Force check for updates immediately
+        reg.update();
+
         // Wait for SW to be active
         if (reg.installing) {
           await new Promise(resolve => {
