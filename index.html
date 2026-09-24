@@ -1152,6 +1152,19 @@ input[type=file] { display: none; }
     </div>
   </div>
 
+  <!-- QUOTATION REQUEST SHEET -->
+  <div class="sheet-backdrop" id="sheet-quotation-request">
+    <div class="sheet" style="max-height:92vh;">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">📋 Request Quotation</div>
+        <button class="sheet-close" onclick="closeSheet('sheet-quotation-request')">✕</button>
+      </div>
+      <div class="sheet-body" id="quotation-request-body">
+      </div>
+    </div>
+  </div>
+
   <!-- BOTTOM NAV -->
   <nav class="nav">
     <button class="nav-item active" data-tab="home" onclick="showTab('home')">
@@ -4832,9 +4845,13 @@ async function openFollowupDetail(visitId) {
     </button>
     ${visit.site_lat ? `
     <a href="https://www.google.com/maps?q=${visit.site_lat},${visit.site_lng}" target="_blank"
-      class="btn btn-secondary" style="text-decoration:none;display:block;text-align:center;">
+      class="btn btn-secondary" style="text-decoration:none;display:block;text-align:center;margin-bottom:8px;">
       📍 Navigate to Site
     </a>` : ''}
+    <button onclick="openQuotationRequest(${visit.id}); closeSheet('sheet-followup-detail');"
+      class="btn btn-secondary" style="width:100%;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);color:#A78BFA;">
+      📋 Request Quotation
+    </button>
   `;
 
   openSheet('sheet-followup-detail');
@@ -4846,6 +4863,195 @@ function getCycleStart() {
   const d = day>=21 ? new Date(now.getFullYear(),now.getMonth(),21) : new Date(now.getFullYear(),now.getMonth()-1,21);
   return d.toISOString().split('T')[0]+'T00:00:00';
 }
+
+// ══════════════════════════════════════════════════════════
+// QUOTATION REQUEST FLOW
+// ══════════════════════════════════════════════════════════
+let _quotationVisitId = null;
+let _quotationPhotos = [];
+
+async function openQuotationRequest(visitId) {
+  _quotationVisitId = visitId;
+  _quotationPhotos = [];
+  openSheet('sheet-quotation-request');
+  const body = document.getElementById('quotation-request-body');
+  if (!body) return;
+  body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);">Loading…</div>';
+
+  const { data: v } = await sb.from('field_visits')
+    .select('id,site_address,construction_stage,ai_stage_detected,ai_requirements,estimated_sqft,site_contacts,customer_name')
+    .eq('id', visitId).single();
+  if (!v) { body.innerHTML = '<div style="color:var(--danger);padding:16px;">Visit not found</div>'; return; }
+
+  const stage = v.ai_stage_detected || v.construction_stage || '—';
+  const reqs = v.ai_requirements || [];
+
+  body.innerHTML = `
+    <div style="background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;">SITE</div>
+      <div style="font-size:14px;font-weight:700;">${v.site_address||'—'}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px;">${stageLabel(stage)} ${v.estimated_sqft?'· '+v.estimated_sqft+' sqft':''}</div>
+      ${reqs.length ? `<div style="font-size:12px;color:var(--accent);margin-top:4px;">AI needs: ${reqs.slice(0,3).join(', ')}</div>` : ''}
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Urgency</label>
+      <div style="display:flex;gap:8px;">
+        <button onclick="selectUrgency('normal',this)" id="urg-normal"
+          style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--base);font-size:13px;font-weight:700;cursor:pointer;">Normal</button>
+        <button onclick="selectUrgency('urgent',this)" id="urg-urgent"
+          style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;">Urgent</button>
+        <button onclick="selectUrgency('critical',this)" id="urg-critical"
+          style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;">🚨 Critical</button>
+      </div>
+      <input type="hidden" id="quot-urgency" value="normal">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Photos of requirement list <span style="color:var(--text3);font-weight:400;">(optional)</span></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="quot-photo-grid">
+        <button onclick="addQuotPhotoSlot()"
+          style="width:80px;height:80px;border-radius:10px;border:2px dashed var(--border);background:var(--surface2);color:var(--text3);font-size:24px;cursor:pointer;">+</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Special notes / requirements</label>
+      <textarea id="quot-notes" class="form-input" rows="3"
+        placeholder="e.g. Customer wants specific brands, budget range, delivery timeline…" style="resize:none;"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Customer's budget hint <span style="color:var(--text3);font-weight:400;">(optional)</span></label>
+      <input id="quot-budget" type="text" class="form-input" placeholder="e.g. ₹3–5 lakhs, under ₹2L">
+    </div>
+
+    <div id="quot-submit-status" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:10px;"></div>
+
+    <button onclick="submitQuotationRequest()" class="btn btn-primary" id="quot-submit-btn">
+      📋 Submit Quotation Request
+    </button>
+    <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px;">
+      Customer contact details are not shared with the quotation team.<br>
+      Quotation will be sent directly to customer once management approves.
+    </div>`;
+}
+window.openQuotationRequest = openQuotationRequest;
+
+function selectUrgency(val) {
+  ['normal','urgent','critical'].forEach(u => {
+    const b = document.getElementById('urg-'+u);
+    if (!b) return;
+    const active = u === val;
+    b.style.background = active ? 'var(--accent)' : 'transparent';
+    b.style.color = active ? 'var(--base)' : 'var(--text2)';
+    b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+  });
+  const inp = document.getElementById('quot-urgency');
+  if (inp) inp.value = val;
+}
+window.selectUrgency = selectUrgency;
+
+function addQuotPhotoSlot() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+  input.onchange = (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const idx = _quotationPhotos.length;
+    _quotationPhotos.push({ file });
+    const grid = document.getElementById('quot-photo-grid');
+    if (!grid) return;
+    const thumb = document.createElement('div');
+    thumb.id = `quot-thumb-${idx}`;
+    thumb.style.cssText = 'width:80px;height:80px;border-radius:10px;overflow:hidden;position:relative;border:2px solid var(--border);';
+    const reader = new FileReader();
+    reader.onload = ev => {
+      thumb.innerHTML = `<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;">
+        <button onclick="removeQuotPhoto(${idx})" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:12px;cursor:pointer;line-height:1;">✕</button>`;
+    };
+    reader.readAsDataURL(file);
+    const addBtn = grid.querySelector('button[onclick="addQuotPhotoSlot()"]');
+    grid.insertBefore(thumb, addBtn);
+  };
+  input.click();
+}
+window.addQuotPhotoSlot = addQuotPhotoSlot;
+
+function removeQuotPhoto(idx) {
+  _quotationPhotos[idx] = null;
+  document.getElementById(`quot-thumb-${idx}`)?.remove();
+}
+window.removeQuotPhoto = removeQuotPhoto;
+
+async function submitQuotationRequest() {
+  if (!_quotationVisitId) return;
+  const btn = document.getElementById('quot-submit-btn');
+  const statusEl = document.getElementById('quot-submit-status');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  const setStatus = (msg, type) => {
+    if (!statusEl) return;
+    statusEl.style.display = 'block';
+    statusEl.style.background = type==='err'?'rgba(239,68,68,.1)':'rgba(34,197,94,.1)';
+    statusEl.style.color = type==='err'?'var(--danger)':'var(--success)';
+    statusEl.textContent = msg;
+  };
+
+  try {
+    const { data: v } = await sb.from('field_visits').select('*').eq('id', _quotationVisitId).single();
+
+    // Upload requirement photos
+    const photoUrls = [];
+    const photos = _quotationPhotos.filter(Boolean);
+    for (let i = 0; i < photos.length; i++) {
+      btn.textContent = `Uploading photo ${i+1}/${photos.length}…`;
+      const url = await uploadPhoto(photos[i].file, `quotations/${currentUser.id}/${Date.now()}_req_${i}`);
+      if (url) photoUrls.push(url);
+    }
+
+    btn.textContent = 'Saving request…';
+    const urgency = document.getElementById('quot-urgency')?.value || 'normal';
+    const notes = document.getElementById('quot-notes')?.value?.trim() || null;
+    const budget = document.getElementById('quot-budget')?.value?.trim() || null;
+    const now = Date.now();
+
+    const { data: qr, error } = await sb.from('quotation_requests').insert({
+      field_visit_id: v.id,
+      requested_by_staff_id: currentUser.id,
+      requested_by_name: currentUser.name,
+      site_area: (v.site_address||'').split(',').slice(-2).join(',').trim(),
+      construction_stage: v.ai_stage_detected || v.construction_stage,
+      estimated_sqft: v.estimated_sqft,
+      ai_requirements: v.ai_requirements,
+      customer_name: v.customer_name || v.site_contacts?.[0]?.name || null,
+      customer_phone: v.site_contacts?.[0]?.phone || null,
+      customer_address: v.site_address,
+      notes, requirement_photos: photoUrls, urgency,
+      budget_hint: budget, status: 'requested',
+      tl_deadline: new Date(now + 30*60000).toISOString(),
+      cat_mgr_deadline: new Date(now + 60*60000).toISOString(),
+      mgmt_deadline: new Date(now + 90*60000).toISOString(),
+    }).select('id,request_no').single();
+
+    if (error) throw error;
+
+    await sb.from('quotation_timeline').insert({
+      request_id: qr.id, action: 'submitted',
+      actor_name: currentUser.name,
+      actor_role: currentUser.designation || currentUser.role,
+      note: `Quotation requested${urgency!=='normal'?' — '+urgency.toUpperCase():''}${budget?'. Budget hint: '+budget:''}`,
+    });
+
+    setStatus(`✅ ${qr.request_no} submitted! Team will prepare within 60 minutes.`, 'ok');
+    btn.textContent = '✓ Submitted';
+    setTimeout(() => closeSheet('sheet-quotation-request'), 2500);
+
+  } catch(e) {
+    setStatus('❌ Error: ' + e.message, 'err');
+    btn.disabled = false; btn.textContent = '📋 Submit Quotation Request';
+  }
+}
+window.submitQuotationRequest = submitQuotationRequest;
 
 // Wire up multi-select chip groups on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
