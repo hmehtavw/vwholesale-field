@@ -4192,7 +4192,7 @@ async function submitNewLead() {
 // ══════════════════════════════════════════════════════
 // QUOTATION REQUEST
 // ══════════════════════════════════════════════════════
-function openQuotationRequest(prefillPhone) {
+function openQuotationRequestLEGACY(prefillPhone) {
   ['qr-customer-name','qr-phone','qr-address','qr-sqft','qr-budget','qr-notes'].forEach(id => {
     document.getElementById(id).value = id==='qr-phone' && prefillPhone ? prefillPhone : '';
   });
