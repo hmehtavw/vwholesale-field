@@ -2597,7 +2597,7 @@ async function showVisitDetail(id) {
     <button class="btn btn-primary mt-8" onclick="shareOnWhatsApp(${v.id})">📲 Share on WhatsApp</button>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
       <button class="btn btn-secondary" onclick="requestCatalog(${v.id}, '${(v.site_contacts?.[0]?.phone||'').replace(/'/g,'')}')" style="font-size:13px;">📚 Request Catalog</button>
-      <button class="btn btn-secondary" onclick="requestQuotation(${v.id}, '${(v.site_contacts?.[0]?.phone||'').replace(/'/g,'')}')" style="font-size:13px;">📋 Request Quote</button>
+      <button class="btn btn-secondary" onclick="openQuotationRequest(${v.id})" style="font-size:13px;">📋 Request Quote</button>
     </div>
   `;
   openSheet('sheet-visit-detail');
@@ -4198,10 +4198,10 @@ function openQuotationRequest(prefillPhone) {
   });
   document.querySelectorAll('#qr-category-chips .chip').forEach(c=>c.classList.remove('selected'));
   qrCategories = [];
-  openSheet('sheet-quotation-req');
+  openNewQuotationFromHome();
 }
 
-async function submitQuotationRequest() {
+async function submitQuotationRequestOLD() {
   const name = document.getElementById('qr-customer-name').value.trim();
   const phone = document.getElementById('qr-phone').value.trim().replace(/\D/g,'');
   const address = document.getElementById('qr-address').value.trim();
@@ -4678,7 +4678,7 @@ function renderFollowupList() {
             </div>
 
             <div style="display:flex;gap:6px;margin-top:10px;">
-              <button onclick="openFollowUpVisit(${v.id})"
+              <button onclick="openFollowupVisit(${v.id})"
                 style="flex:1;padding:9px;border-radius:8px;background:var(--accent);border:none;color:var(--base);font-size:13px;font-weight:700;cursor:pointer;">
                 🔄 Log Follow-up
               </button>
@@ -4839,7 +4839,7 @@ async function openFollowupDetail(visitId) {
     </div>` : ''}
 
     <!-- Action buttons -->
-    <button onclick="openFollowUpVisit(${visit.id}); closeSheet('sheet-followup-detail');"
+    <button onclick="openFollowupVisit(${visit.id}); closeSheet('sheet-followup-detail');"
       class="btn btn-primary" style="margin-bottom:8px;">
       🔄 Log Follow-up Visit
     </button>
