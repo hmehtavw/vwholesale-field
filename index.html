@@ -709,10 +709,10 @@ input[type=file] { display: none; }
 
       <!-- Quick actions -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-        <button onclick="openQuotationRequest()" class="card" style="border:1px solid rgba(245,166,35,.3);background:var(--accent-soft);cursor:pointer;text-align:left;padding:14px;">
+        <button onclick="openNewQuotationFromHome()" class="card" style="border:1px solid rgba(245,166,35,.3);background:var(--accent-soft);cursor:pointer;text-align:left;padding:14px;">
           <div style="font-size:20px;margin-bottom:6px;">📋</div>
           <div style="font-size:14px;font-weight:700;color:var(--accent);">Request Quotation</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px;">Send to sales team</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px;">Generate instant quote</div>
         </button>
         <button onclick="showTab('catalogs')" class="card" style="border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);cursor:pointer;text-align:left;padding:14px;">
           <div style="font-size:20px;margin-bottom:6px;">📚</div>
@@ -4870,6 +4870,49 @@ function getCycleStart() {
 let _quotationVisitId = null;
 let _quotationPhotos = [];
 
+async function openNewQuotationFromHome() {
+  // Get today's visits to pick from
+  const today = new Date().toISOString().split('T')[0];
+  const { data: visits } = await sb.from('field_visits')
+    .select('id,site_address,construction_stage,ai_stage_detected')
+    .eq('staff_id', currentUser.id)
+    .gte('created_at', today + 'T00:00:00')
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  if (!visits?.length) {
+    // No visits today — open quotation without a visit
+    openQuotationRequest(null);
+    return;
+  }
+  if (visits.length === 1) {
+    // Only one visit — open directly
+    openQuotationRequest(visits[0].id);
+    return;
+  }
+
+  // Multiple visits — let user pick
+  const body = document.getElementById('quotation-request-body');
+  if (body) {
+    openSheet('sheet-quotation-request');
+    body.innerHTML = `
+      <div style="padding:4px 0 16px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;">Which site is this quotation for?</div>
+        ${visits.map(v => `
+          <button onclick="openQuotationRequest(${v.id})"
+            style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);margin-bottom:8px;cursor:pointer;">
+            <div style="font-size:13px;font-weight:700;">${v.site_address||'Site Visit'}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">${v.ai_stage_detected||v.construction_stage||'—'}</div>
+          </button>`).join('')}
+        <button onclick="openQuotationRequest(null)"
+          style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;background:transparent;border:1px solid var(--border);margin-bottom:8px;cursor:pointer;color:var(--text3);">
+          + New customer (not from today's visits)
+        </button>
+      </div>`;
+  }
+}
+window.openNewQuotationFromHome = openNewQuotationFromHome;
+
 async function openQuotationRequest(visitId) {
   _quotationVisitId = visitId;
   _quotationPhotos = [];
@@ -4878,21 +4921,28 @@ async function openQuotationRequest(visitId) {
   if (!body) return;
   body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);">Loading…</div>';
 
-  const { data: v } = await sb.from('field_visits')
-    .select('id,site_address,construction_stage,ai_stage_detected,ai_requirements,estimated_sqft,site_contacts,customer_name')
-    .eq('id', visitId).single();
-  if (!v) { body.innerHTML = '<div style="color:var(--danger);padding:16px;">Visit not found</div>'; return; }
+  let v = null;
+  if (visitId) {
+    const { data } = await sb.from('field_visits')
+      .select('id,site_address,construction_stage,ai_stage_detected,ai_requirements,estimated_sqft,site_contacts,customer_name')
+      .eq('id', visitId).single();
+    v = data;
+  }
 
-  const stage = v.ai_stage_detected || v.construction_stage || '—';
-  const reqs = v.ai_requirements || [];
+  const stage = v ? (v.ai_stage_detected || v.construction_stage || '—') : '—';
+  const reqs = v?.ai_requirements || [];
 
   body.innerHTML = `
+    ${v ? `
     <div style="background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:16px;">
       <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;">SITE</div>
       <div style="font-size:14px;font-weight:700;">${v.site_address||'—'}</div>
       <div style="font-size:12px;color:var(--text2);margin-top:2px;">${stageLabel(stage)} ${v.estimated_sqft?'· '+v.estimated_sqft+' sqft':''}</div>
       ${reqs.length ? `<div style="font-size:12px;color:var(--accent);margin-top:4px;">AI needs: ${reqs.slice(0,3).join(', ')}</div>` : ''}
-    </div>
+    </div>` : `
+    <div style="background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:16px;">
+      <div style="font-size:13px;color:var(--text2);">📋 New quotation request — not linked to a specific visit</div>
+    </div>`}
 
     <div class="form-group">
       <label class="form-label">Urgency</label>
