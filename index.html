@@ -4910,8 +4910,14 @@ async function openQuotationRequest(visitId) {
     <div class="form-group">
       <label class="form-label">Photos of requirement list <span style="color:var(--text3);font-weight:400;">(optional)</span></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;" id="quot-photo-grid">
-        <button onclick="addQuotPhotoSlot()"
-          style="width:80px;height:80px;border-radius:10px;border:2px dashed var(--border);background:var(--surface2);color:var(--text3);font-size:24px;cursor:pointer;">+</button>
+        <button onclick="addQuotPhotoSlot('camera')"
+          style="width:78px;height:78px;border-radius:10px;border:2px dashed var(--border);background:var(--surface2);color:var(--text3);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">
+          <span style="font-size:22px;">📷</span><span style="font-size:10px;">Camera</span>
+        </button>
+        <button onclick="addQuotPhotoSlot('gallery')"
+          style="width:78px;height:78px;border-radius:10px;border:2px dashed var(--border);background:var(--surface2);color:var(--text3);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">
+          <span style="font-size:22px;">🖼️</span><span style="font-size:10px;">Upload</span>
+        </button>
       </div>
     </div>
 
@@ -4952,9 +4958,11 @@ function selectUrgency(val) {
 }
 window.selectUrgency = selectUrgency;
 
-function addQuotPhotoSlot() {
+function addQuotPhotoSlot(mode = 'camera') {
   const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+  input.type = 'file'; input.accept = 'image/*';
+  if (mode === 'camera') input.capture = 'environment'; // camera only
+  // gallery mode: no capture attribute = shows file picker with all options
   input.onchange = (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     const idx = _quotationPhotos.length;
@@ -4970,7 +4978,7 @@ function addQuotPhotoSlot() {
         <button onclick="removeQuotPhoto(${idx})" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:12px;cursor:pointer;line-height:1;">✕</button>`;
     };
     reader.readAsDataURL(file);
-    const addBtn = grid.querySelector('button[onclick="addQuotPhotoSlot()"]');
+    const addBtn = grid.querySelector('button[onclick*="addQuotPhotoSlot"]');
     grid.insertBefore(thumb, addBtn);
   };
   input.click();
