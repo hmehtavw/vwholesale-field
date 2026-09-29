@@ -857,6 +857,18 @@ input[type=file] { display: none; }
     </div>
   </div>
 
+  <!-- CUSTOMER HISTORY & FOLLOW-UP SHEET -->
+  <div class="sheet-backdrop" id="sheet-customer-history">
+    <div class="sheet" style="max-height:95vh;">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title" id="history-sheet-title">Customer History</div>
+        <button class="sheet-close" onclick="closeSheet('sheet-customer-history')">✕</button>
+      </div>
+      <div class="sheet-body" id="customer-history-body"></div>
+    </div>
+  </div>
+
   <!-- QUOTATION REQUEST SHEET -->
   <div class="sheet-backdrop" id="sheet-quotation-req">
     <div class="sheet">
@@ -3704,32 +3716,227 @@ async function runAIAnalysis(visitId, photoUrls, visitData) {
 }
 
 async function openFollowupVisit(parentId) {
-  closeSheet('sheet-visit-detail');
+  // Open customer history sheet instead of full visit form
+  openSheet('sheet-customer-history');
+  const body = document.getElementById('customer-history-body');
+  const title = document.getElementById('history-sheet-title');
+  if (body) body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);">Loading history…</div>';
+
+  // Fetch the root visit and all follow-ups
   const { data: parent } = await sb.from('field_visits').select('*').eq('id', parentId).single();
   if (!parent) return;
-  resetVisitForm();
 
-  // Pre-fill from parent
-  if (parent.site_lat) { visitPinLat = parent.site_lat; visitPinLng = parent.site_lng; }
-  if (parent.site_contacts) { visitContacts = parent.site_contacts.map(c=>({...c, id: Date.now()+Math.random()})); renderContactsList(); }
-  const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-  safeSet('vs-area', parent.site_address);
-  safeSet('vs-city', parent.city);
-  safeSet('vs-stage', parent.construction_stage);
-  safeSet('vs-site-name', parent.customer_name);
-  document.getElementById('visit-sheet-title').textContent = 'Follow-up Visit';
+  // Find root visit (if this is already a follow-up)
+  const rootId = parent.parent_visit_id || parent.id;
 
-  if (visitPinLat) {
-    document.getElementById('visit-pin-info').classList.remove('hidden');
-    document.getElementById('visit-pin-addr').textContent = 'Revisiting: ' + parent.site_address;
-    document.getElementById('visit-map').innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--success);flex-direction:column;gap:4px;"><div style="font-size:32px;">📍</div><div style="font-size:13px;">Previous location reused</div></div>';
-  }
+  // Get all visits for this site (root + all follow-ups)
+  const { data: allVisits } = await sb.from('field_visits')
+    .select('id,created_at,staff_id,executive_name,construction_stage,ai_stage_detected,visit_quality_score,ai_requirements,ai_analysis,site_contacts,notes,next_action_date,is_followup,parent_visit_id,converted_invoice_id,conversion_value,competitor_products')
+    .or(`id.eq.${rootId},parent_visit_id.eq.${rootId}`)
+    .order('created_at', { ascending: false });
 
-  openSheet('sheet-visit');
+  const visits = allVisits || [parent];
+  const latest = visits[0];
+  const contact = latest?.site_contacts?.[0];
+  const phone = (contact?.phone||'').replace(/\D/g,'');
 
-  // Load AI follow-up questions in background
-  loadFollowupQuestions(parentId);
+  if (title) title.textContent = parent.customer_name || parent.site_address?.split('—')[0]?.trim() || 'Customer History';
+
+  // Build stage options
+  const stages = ['foundation','rcc_casting','brick_work','plastering','tiling_ready','tiling','painting','flooring','finishing','handover','completed'];
+  const stageOpts = stages.map(s => `<option value="${s}" ${(latest?.ai_stage_detected||latest?.construction_stage)===s?'selected':''}>${stageLabel(s)}</option>`).join('');
+
+  body.innerHTML = `
+    <!-- Site header -->
+    <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:800;">${parent.customer_name || 'Site Visit'}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px;">${parent.site_address||'—'}</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <span style="padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;background:rgba(245,166,35,.15);color:var(--accent);">${stageLabel(latest?.ai_stage_detected||latest?.construction_stage||'')}</span>
+        ${contact?.name?`<span style="padding:3px 10px;border-radius:10px;font-size:11px;background:var(--surface3);color:var(--text2);">👤 ${contact.name}</span>`:''}
+        ${phone?`<a href="tel:+91${phone}" style="padding:3px 10px;border-radius:10px;font-size:11px;background:rgba(34,197,94,.1);color:var(--success);text-decoration:none;">📞 ${contact?.phone}</a>`:''}
+      </div>
+    </div>
+
+    <!-- Quick update section -->
+    <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">📝 LOG TODAY'S FOLLOW-UP</div>
+
+      <!-- Stage update -->
+      <div style="margin-bottom:10px;">
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Update Stage</label>
+        <select id="followup-stage" class="form-input" style="width:100%;">${stageOpts}</select>
+      </div>
+
+      <!-- Remarks -->
+      <div style="margin-bottom:10px;">
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Remarks / Notes <span style="color:var(--danger);">*</span></label>
+        <textarea id="followup-remarks" class="form-input" rows="3" placeholder="What happened today? Customer feedback, decisions made, products discussed…" style="resize:none;"></textarea>
+      </div>
+
+      <!-- Next follow-up date -->
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Next Follow-up Date</label>
+        <input type="date" id="followup-next-date" class="form-input" 
+          value="${new Date(Date.now()+7*24*60*60*1000).toISOString().split('T')[0]}"
+          min="${new Date().toISOString().split('T')[0]}">
+      </div>
+
+      <!-- Photo option -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button onclick="addFollowupPhoto('camera')"
+          style="flex:1;padding:9px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;">
+          📷 Add Photo
+        </button>
+        <button onclick="addFollowupPhoto('gallery')"
+          style="flex:1;padding:9px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;">
+          🖼️ Upload
+        </button>
+      </div>
+      <div id="followup-photos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+
+      <div id="followup-save-status" style="display:none;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:8px;"></div>
+
+      <div style="display:flex;gap:8px;">
+        <button onclick="saveFollowupRemark(${parentId})" class="btn btn-primary" style="flex:2;">
+          ✓ Save Follow-up
+        </button>
+        <button onclick="openQuotationRequest(${parentId}); closeSheet('sheet-customer-history');"
+          style="flex:1;padding:10px;border-radius:10px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);color:#A78BFA;font-size:12px;font-weight:700;cursor:pointer;">
+          📋 Quote
+        </button>
+      </div>
+    </div>
+
+    <!-- AI suggestion for today -->
+    ${latest?.ai_analysis?.suggestion ? `
+    <div style="background:rgba(139,92,246,.08);border-left:3px solid #A78BFA;border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:#A78BFA;margin-bottom:4px;">🤖 WHAT TO DISCUSS TODAY</div>
+      <div style="font-size:13px;color:var(--text);line-height:1.6;">${latest.ai_analysis.suggestion}</div>
+    </div>` : ''}
+
+    <!-- Visit history timeline -->
+    <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">📅 VISIT HISTORY (${visits.length} visit${visits.length>1?'s':''})</div>
+
+    ${visits.map((v, i) => {
+      const daysAgo = Math.round((Date.now()-new Date(v.created_at))/86400000);
+      const vContact = v.site_contacts?.[0];
+      const aiAnalysis = v.ai_analysis || {};
+      return `
+      <div style="border-left:2px solid ${i===0?'var(--accent)':'var(--border)'};padding-left:14px;margin-bottom:16px;position:relative;">
+        <div style="position:absolute;left:-5px;top:4px;width:8px;height:8px;border-radius:50%;background:${i===0?'var(--accent)':'var(--border)'}"></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+          <div>
+            <div style="font-size:13px;font-weight:700;">${i===0?'Latest':'Visit '+(visits.length-i)} ${v.is_followup?'↩ Follow-up':''}</div>
+            <div style="font-size:11px;color:var(--text3);">${new Date(v.created_at).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})} · ${daysAgo===0?'Today':daysAgo===1?'Yesterday':daysAgo+'d ago'}</div>
+          </div>
+          ${v.visit_quality_score?`<span style="font-size:11px;font-weight:700;color:var(--success);">${Math.round(v.visit_quality_score)}%</span>`:''}
+        </div>
+        ${v.construction_stage?`<div style="font-size:12px;color:var(--text2);margin-bottom:4px;">🏗️ Stage: ${stageLabel(v.ai_stage_detected||v.construction_stage)}</div>`:''}
+        ${v.notes?`<div style="font-size:12px;color:var(--text2);margin-bottom:4px;padding:6px 10px;background:var(--surface3);border-radius:6px;">📝 ${v.notes}</div>`:''}
+        ${aiAnalysis.crm_note?`<div style="font-size:12px;color:var(--text3);margin-bottom:4px;">🤖 ${aiAnalysis.crm_note}</div>`:''}
+        ${v.ai_requirements?.length?`<div style="font-size:11px;color:var(--accent);">Needs: ${v.ai_requirements.slice(0,3).join(', ')}</div>`:''}
+        ${v.converted_invoice_id?`<div style="font-size:12px;color:var(--success);font-weight:700;margin-top:4px;">✅ Converted — ₹${v.conversion_value?.toLocaleString('en-IN')||'—'}</div>`:''}
+      </div>`;
+    }).join('')}`;
 }
+window.openFollowupVisit = openFollowupVisit;
+
+let _followupPhotos = [];
+
+function addFollowupPhoto(mode) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  if (mode === 'camera') input.capture = 'environment';
+  input.onchange = (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const idx = _followupPhotos.length;
+    _followupPhotos.push({ file });
+    const grid = document.getElementById('followup-photos');
+    if (!grid) return;
+    const thumb = document.createElement('div');
+    thumb.style.cssText = 'position:relative;width:60px;height:60px;border-radius:8px;overflow:hidden;';
+    const reader = new FileReader();
+    reader.onload = ev => {
+      thumb.innerHTML = `<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;">
+        <button onclick="this.parentElement.remove();_followupPhotos[${idx}]=null;" style="position:absolute;top:1px;right:1px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.7);border:none;color:#fff;font-size:10px;cursor:pointer;line-height:1;">✕</button>`;
+    };
+    reader.readAsDataURL(file);
+    grid.appendChild(thumb);
+  };
+  input.click();
+}
+window.addFollowupPhoto = addFollowupPhoto;
+
+async function saveFollowupRemark(parentId) {
+  const remarks = document.getElementById('followup-remarks')?.value?.trim();
+  if (!remarks) { showToast('Please add remarks for this follow-up'); return; }
+
+  const btn = document.querySelector('#customer-history-body button[onclick*="saveFollowupRemark"]');
+  const statusEl = document.getElementById('followup-save-status');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  const setStatus = (msg, ok) => {
+    if (!statusEl) return;
+    statusEl.style.display = 'block';
+    statusEl.style.background = ok ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.1)';
+    statusEl.style.color = ok ? 'var(--success)' : 'var(--danger)';
+    statusEl.textContent = msg;
+  };
+
+  try {
+    const stage = document.getElementById('followup-stage')?.value;
+    const nextDate = document.getElementById('followup-next-date')?.value;
+
+    // Upload photos
+    const photoUrls = [];
+    const photos = _followupPhotos.filter(Boolean);
+    for (let i = 0; i < photos.length; i++) {
+      if (btn) btn.textContent = `Uploading photo ${i+1}/${photos.length}…`;
+      const url = await uploadPhoto(photos[i].file, `field_visits/${currentUser.id}/${Date.now()}_fu_${i}`);
+      if (url) photoUrls.push(url);
+    }
+
+    // Create a follow-up visit record (lightweight)
+    const { error } = await sb.from('field_visits').insert({
+      staff_id: currentUser.id,
+      executive_name: currentUser.name,
+      parent_visit_id: parentId,
+      is_followup: true,
+      site_address: document.getElementById('history-sheet-title')?.textContent || 'Follow-up',
+      construction_stage: stage,
+      ai_stage_detected: stage,
+      notes: remarks,
+      next_action_date: nextDate || null,
+      site_photos: photoUrls.map((url,i) => ({ url, slotId: i+1 })),
+      status: 'completed',
+      check_in_at: new Date().toISOString(),
+      site_lat: null, site_lng: null,
+      visit_quality_score: 75, // default for quick follow-up
+      designation_at_visit: currentUser.designation || currentUser.role,
+      visit_type: 'follow_up',
+    });
+
+    if (error) throw error;
+
+    // Update parent visit's next_action_date
+    await sb.from('field_visits').update({
+      next_action_date: nextDate || null,
+      construction_stage: stage,
+    }).eq('id', parentId);
+
+    setStatus('✅ Follow-up saved! Customer history updated.', true);
+    _followupPhotos = [];
+    showToast('✅ Follow-up logged');
+    loadTodayData();
+    setTimeout(() => closeSheet('sheet-customer-history'), 1500);
+
+  } catch(e) {
+    setStatus('❌ Error: ' + e.message, false);
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Save Follow-up'; }
+  }
+}
+window.saveFollowupRemark = saveFollowupRemark;
 
 async function loadFollowupQuestions(parentId) {
   try {
