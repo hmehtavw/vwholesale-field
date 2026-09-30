@@ -3716,130 +3716,169 @@ async function runAIAnalysis(visitId, photoUrls, visitData) {
 }
 
 async function openFollowupVisit(parentId) {
-  // Open customer history sheet instead of full visit form
   openSheet('sheet-customer-history');
   const body = document.getElementById('customer-history-body');
   const title = document.getElementById('history-sheet-title');
-  if (body) body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);">Loading history…</div>';
+  if (body) body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);">Loading site history…</div>';
 
-  // Fetch the root visit and all follow-ups
+  // Fetch parent visit with ALL fields
   const { data: parent } = await sb.from('field_visits').select('*').eq('id', parentId).single();
-  if (!parent) return;
+  if (!parent) { if (body) body.innerHTML = '<div style="padding:16px;color:var(--danger);">Visit not found</div>'; return; }
 
-  // Find root visit (if this is already a follow-up)
+  // Find root visit for site history
   const rootId = parent.parent_visit_id || parent.id;
 
-  // Get all visits for this site (root + all follow-ups)
+  // Get ALL visits for this site
   const { data: allVisits } = await sb.from('field_visits')
-    .select('id,created_at,staff_id,executive_name,construction_stage,ai_stage_detected,visit_quality_score,ai_requirements,ai_analysis,site_contacts,notes,next_action_date,is_followup,parent_visit_id,converted_invoice_id,conversion_value,competitor_products')
+    .select('id,created_at,staff_id,executive_name,construction_stage,ai_stage_detected,visit_quality_score,ai_requirements,ai_analysis,site_contacts,notes,next_action_date,is_followup,parent_visit_id,converted_invoice_id,conversion_value,competitor_products,visit_type')
     .or(`id.eq.${rootId},parent_visit_id.eq.${rootId}`)
     .order('created_at', { ascending: false });
 
   const visits = allVisits || [parent];
   const latest = visits[0];
-  const contact = latest?.site_contacts?.[0];
-  const phone = (contact?.phone||'').replace(/\D/g,'');
 
-  if (title) title.textContent = parent.customer_name || parent.site_address?.split('—')[0]?.trim() || 'Customer History';
+  // Merge ALL contacts across all visits (deduplicate by phone)
+  const allContacts = {};
+  for (const v of [...visits].reverse()) {
+    for (const c of (v.site_contacts||[])) {
+      const key = (c.phone||'').replace(/\D/g,'') || c.name;
+      if (key) allContacts[key] = { ...allContacts[key], ...c };
+    }
+  }
+  const mergedContacts = Object.values(allContacts);
 
-  // Build stage options
+  // Merge all requirements
+  const allReqs = [...new Set(visits.flatMap(v => v.ai_requirements||[]))];
+
+  // Current stage
+  const currentStage = latest?.ai_stage_detected || latest?.construction_stage || parent.construction_stage || '';
+  const siteName = parent.customer_name || parent.site_address?.split('—')[0]?.trim() || 'Site';
+
+  if (title) title.textContent = siteName;
+
+  // Stage options
   const stages = ['foundation','rcc_casting','brick_work','plastering','tiling_ready','tiling','painting','flooring','finishing','handover','completed'];
-  const stageOpts = stages.map(s => `<option value="${s}" ${(latest?.ai_stage_detected||latest?.construction_stage)===s?'selected':''}>${stageLabel(s)}</option>`).join('');
+  const stageOpts = stages.map(s => `<option value="${s}" ${currentStage===s?'selected':''}>${stageLabel(s)}</option>`).join('');
+
+  // Contact roles to show
+  const contactRoles = ['Owner','Contractor','Builder','Architect','Interior Designer','Supervisor','Electrician','Plumber'];
 
   body.innerHTML = `
-    <!-- Site header -->
-    <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:16px;">
-      <div style="font-size:15px;font-weight:800;">${parent.customer_name || 'Site Visit'}</div>
+    <!-- Follow-up header -->
+    <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px;">↩ FOLLOW-UP · EXISTING SITE</div>
+      <div style="font-size:15px;font-weight:800;">${siteName}</div>
       <div style="font-size:12px;color:var(--text3);margin-top:2px;">${parent.site_address||'—'}</div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-        <span style="padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;background:rgba(245,166,35,.15);color:var(--accent);">${stageLabel(latest?.ai_stage_detected||latest?.construction_stage||'')}</span>
-        ${contact?.name?`<span style="padding:3px 10px;border-radius:10px;font-size:11px;background:var(--surface3);color:var(--text2);">👤 ${contact.name}</span>`:''}
-        ${phone?`<a href="tel:+91${phone}" style="padding:3px 10px;border-radius:10px;font-size:11px;background:rgba(34,197,94,.1);color:var(--success);text-decoration:none;">📞 ${contact?.phone}</a>`:''}
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;font-size:11px;color:var(--text3);">
+        <span>First visited: ${new Date(visits[visits.length-1]?.created_at||parent.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span>
+        <span>·</span>
+        <span>${visits.length} visit${visits.length>1?'s':''} total</span>
+        <span>·</span>
+        <span>Last stage: ${stageLabel(currentStage)}</span>
       </div>
     </div>
 
-    <!-- Quick update section -->
-    <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:16px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">📝 LOG TODAY'S FOLLOW-UP</div>
+    <!-- TODAY'S FOLLOW-UP -->
+    <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:12px;">📝 TODAY'S FOLLOW-UP</div>
 
-      <!-- Stage update -->
       <div style="margin-bottom:10px;">
-        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Update Stage</label>
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Current Stage <span style="color:var(--text3);">(update if changed)</span></label>
         <select id="followup-stage" class="form-input" style="width:100%;">${stageOpts}</select>
       </div>
 
-      <!-- Remarks -->
       <div style="margin-bottom:10px;">
-        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Remarks / Notes <span style="color:var(--danger);">*</span></label>
-        <textarea id="followup-remarks" class="form-input" rows="3" placeholder="What happened today? Customer feedback, decisions made, products discussed…" style="resize:none;"></textarea>
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Remarks / Discussion <span style="color:var(--danger);">*</span></label>
+        <textarea id="followup-remarks" class="form-input" rows="3"
+          placeholder="What happened today? Products discussed, customer decisions, feedback, requirements…" style="resize:none;"></textarea>
       </div>
 
-      <!-- Next follow-up date -->
-      <div style="margin-bottom:12px;">
+      <div style="margin-bottom:10px;">
         <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Next Follow-up Date</label>
-        <input type="date" id="followup-next-date" class="form-input" 
+        <input type="date" id="followup-next-date" class="form-input"
           value="${new Date(Date.now()+7*24*60*60*1000).toISOString().split('T')[0]}"
           min="${new Date().toISOString().split('T')[0]}">
       </div>
 
-      <!-- Photo option -->
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
         <button onclick="addFollowupPhoto('camera')"
-          style="flex:1;padding:9px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;">
-          📷 Add Photo
-        </button>
+          style="flex:1;padding:9px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;">📷 Camera</button>
         <button onclick="addFollowupPhoto('gallery')"
-          style="flex:1;padding:9px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;">
-          🖼️ Upload
-        </button>
+          style="flex:1;padding:9px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;">🖼️ Upload</button>
       </div>
       <div id="followup-photos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
 
       <div id="followup-save-status" style="display:none;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:8px;"></div>
 
       <div style="display:flex;gap:8px;">
-        <button onclick="saveFollowupRemark(${parentId})" class="btn btn-primary" style="flex:2;">
-          ✓ Save Follow-up
-        </button>
+        <button onclick="saveFollowupRemark(${parentId})" class="btn btn-primary" id="btn-save-followup" style="flex:2;">✓ Save Follow-up</button>
         <button onclick="openQuotationRequest(${parentId}); closeSheet('sheet-customer-history');"
-          style="flex:1;padding:10px;border-radius:10px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);color:#A78BFA;font-size:12px;font-weight:700;cursor:pointer;">
-          📋 Quote
-        </button>
+          style="flex:1;padding:10px;border-radius:10px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);color:#A78BFA;font-size:12px;font-weight:700;cursor:pointer;">📋 Quote</button>
       </div>
     </div>
 
-    <!-- AI suggestion for today -->
+    <!-- EXISTING CONTACTS -->
+    ${mergedContacts.length ? `
+    <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">👥 KNOWN CONTACTS</div>
+      ${mergedContacts.map(c => {
+        const ph = (c.phone||'').replace(/\D/g,'');
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">
+            ${c.role==='Owner'?'🏠':c.role==='Contractor'?'👷':c.role==='Builder'?'🏗️':c.role==='Architect'?'📐':c.role==='Supervisor'?'📋':'👤'}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;">${c.name||'—'}</div>
+            <div style="font-size:11px;color:var(--text3);">${c.role||'Contact'} ${c.phone?'· '+c.phone:''}</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            ${ph?`<a href="tel:+91${ph}" style="padding:5px 8px;border-radius:6px;background:var(--surface3);color:var(--text2);font-size:11px;text-decoration:none;">📞</a>`:''}
+            ${ph?`<a href="https://wa.me/91${ph}" target="_blank" style="padding:5px 8px;border-radius:6px;background:rgba(37,211,102,.1);color:#25D366;font-size:11px;text-decoration:none;">💬</a>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+
+    <!-- AI SUGGESTION -->
     ${latest?.ai_analysis?.suggestion ? `
-    <div style="background:rgba(139,92,246,.08);border-left:3px solid #A78BFA;border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px;">
+    <div style="background:rgba(139,92,246,.08);border-left:3px solid #A78BFA;border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:14px;">
       <div style="font-size:11px;font-weight:700;color:#A78BFA;margin-bottom:4px;">🤖 WHAT TO DISCUSS TODAY</div>
       <div style="font-size:13px;color:var(--text);line-height:1.6;">${latest.ai_analysis.suggestion}</div>
     </div>` : ''}
 
-    <!-- Visit history timeline -->
-    <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">📅 VISIT HISTORY (${visits.length} visit${visits.length>1?'s':''})</div>
+    <!-- KNOWN REQUIREMENTS -->
+    ${allReqs.length ? `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:8px;">🏗️ KNOWN REQUIREMENTS</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${allReqs.map(r=>`<span style="padding:4px 10px;border-radius:16px;font-size:12px;background:rgba(245,166,35,.1);color:var(--accent);border:1px solid rgba(245,166,35,.2);">${r}</span>`).join('')}
+      </div>
+    </div>` : ''}
 
+    <!-- VISIT HISTORY TIMELINE -->
+    <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">📅 VISIT HISTORY</div>
     ${visits.map((v, i) => {
       const daysAgo = Math.round((Date.now()-new Date(v.created_at))/86400000);
-      const vContact = v.site_contacts?.[0];
-      const aiAnalysis = v.ai_analysis || {};
-      return `
-      <div style="border-left:2px solid ${i===0?'var(--accent)':'var(--border)'};padding-left:14px;margin-bottom:16px;position:relative;">
+      const aiA = v.ai_analysis || {};
+      return `<div style="border-left:2px solid ${i===0?'var(--accent)':'var(--border)'};padding-left:14px;margin-bottom:14px;position:relative;">
         <div style="position:absolute;left:-5px;top:4px;width:8px;height:8px;border-radius:50%;background:${i===0?'var(--accent)':'var(--border)'}"></div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-          <div>
-            <div style="font-size:13px;font-weight:700;">${i===0?'Latest':'Visit '+(visits.length-i)} ${v.is_followup?'↩ Follow-up':''}</div>
-            <div style="font-size:11px;color:var(--text3);">${new Date(v.created_at).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})} · ${daysAgo===0?'Today':daysAgo===1?'Yesterday':daysAgo+'d ago'}</div>
-          </div>
-          ${v.visit_quality_score?`<span style="font-size:11px;font-weight:700;color:var(--success);">${Math.round(v.visit_quality_score)}%</span>`:''}
+        <div style="font-size:12px;font-weight:700;margin-bottom:2px;">
+          ${i===0?'Latest visit':'Visit '+(visits.length-i)} 
+          ${v.is_followup?'<span style="font-size:10px;background:rgba(245,166,35,.1);color:var(--accent);padding:1px 6px;border-radius:8px;">follow-up</span>':''}
         </div>
-        ${v.construction_stage?`<div style="font-size:12px;color:var(--text2);margin-bottom:4px;">🏗️ Stage: ${stageLabel(v.ai_stage_detected||v.construction_stage)}</div>`:''}
-        ${v.notes?`<div style="font-size:12px;color:var(--text2);margin-bottom:4px;padding:6px 10px;background:var(--surface3);border-radius:6px;">📝 ${v.notes}</div>`:''}
-        ${aiAnalysis.crm_note?`<div style="font-size:12px;color:var(--text3);margin-bottom:4px;">🤖 ${aiAnalysis.crm_note}</div>`:''}
-        ${v.ai_requirements?.length?`<div style="font-size:11px;color:var(--accent);">Needs: ${v.ai_requirements.slice(0,3).join(', ')}</div>`:''}
-        ${v.converted_invoice_id?`<div style="font-size:12px;color:var(--success);font-weight:700;margin-top:4px;">✅ Converted — ₹${v.conversion_value?.toLocaleString('en-IN')||'—'}</div>`:''}
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">
+          ${new Date(v.created_at).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})} · 
+          ${daysAgo===0?'Today':daysAgo===1?'Yesterday':daysAgo+'d ago'} · 
+          ${v.executive_name||'—'}
+        </div>
+        ${v.construction_stage?`<div style="font-size:12px;color:var(--text2);margin-bottom:4px;">Stage: ${stageLabel(v.ai_stage_detected||v.construction_stage)}</div>`:''}
+        ${v.notes?`<div style="font-size:12px;color:var(--text2);padding:6px 10px;background:var(--surface3);border-radius:6px;margin-bottom:4px;">📝 ${v.notes}</div>`:''}
+        ${aiA.crm_note?`<div style="font-size:11px;color:var(--text3);">🤖 ${aiA.crm_note}</div>`:''}
+        ${v.converted_invoice_id?`<div style="font-size:12px;color:var(--success);font-weight:700;margin-top:4px;">✅ Converted — ₹${(v.conversion_value||0).toLocaleString('en-IN')}</div>`:''}
       </div>`;
     }).join('')}`;
 }
+window.openFollowupVisit = openFollowupVisit;
 window.openFollowupVisit = openFollowupVisit;
 
 let _followupPhotos = [];
@@ -3897,13 +3936,19 @@ async function saveFollowupRemark(parentId) {
       if (url) photoUrls.push(url);
     }
 
-    // Create a follow-up visit record (lightweight)
+    // Get parent visit address for the follow-up record
+    const { data: parentData } = await sb.from('field_visits').select('site_address,customer_name,city,site_contacts,construction_stage').eq('id', parentId).single();
+
+    // Create follow-up visit record
     const { error } = await sb.from('field_visits').insert({
       staff_id: currentUser.id,
       executive_name: currentUser.name,
       parent_visit_id: parentId,
       is_followup: true,
-      site_address: document.getElementById('history-sheet-title')?.textContent || 'Follow-up',
+      site_address: parentData?.site_address || 'Follow-up visit',
+      customer_name: parentData?.customer_name || null,
+      city: parentData?.city || 'Vijayawada',
+      site_contacts: parentData?.site_contacts || [],
       construction_stage: stage,
       ai_stage_detected: stage,
       notes: remarks,
@@ -3911,8 +3956,9 @@ async function saveFollowupRemark(parentId) {
       site_photos: photoUrls.map((url,i) => ({ url, slotId: i+1 })),
       status: 'completed',
       check_in_at: new Date().toISOString(),
-      site_lat: null, site_lng: null,
-      visit_quality_score: 75, // default for quick follow-up
+      site_lat: visitPinLat || null,
+      site_lng: visitPinLng || null,
+      visit_quality_score: 75,
       designation_at_visit: currentUser.designation || currentUser.role,
       visit_type: 'follow_up',
     });
