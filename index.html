@@ -1330,6 +1330,14 @@ input[type=file] { display: none; }
     </div>
     <div class="sheet-body" id="visit-form-body">
 
+      <!-- Follow-up search trigger -->
+      <div id="followup-search-bar" style="margin-bottom:14px;">
+        <button onclick="openFollowupSearch()" style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px dashed var(--border);background:var(--surface-alt,var(--surface));color:var(--text2);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;">
+          <span style="font-size:16px;">🔄</span>
+          <span>Is this a follow-up? Search by name, phone or nearby sites</span>
+        </button>
+      </div>
+
       <!-- Step indicator -->
       <div style="display:flex;gap:4px;margin-bottom:20px;" id="visit-steps">
         <div class="step-dot active" data-step="1" style="flex:1;height:4px;border-radius:2px;background:var(--accent);"></div>
@@ -1602,6 +1610,54 @@ input[type=file] { display: none; }
           <button class="btn btn-primary" id="btn-submit-visit" onclick="submitVisit()">
             Submit Visit
           </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     FOLLOW-UP SEARCH MODAL
+═══════════════════════════════════════════════ -->
+<div class="sheet-backdrop" id="sheet-followup-search" style="z-index:9999;">
+  <div class="sheet" style="max-height:88vh;">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">🔍 Find Previous Site</div>
+      <button class="sheet-close" onclick="closeSheet('sheet-followup-search')">✕</button>
+    </div>
+    <div class="sheet-body" style="overflow-y:auto;max-height:calc(88vh - 80px);">
+
+      <!-- Search input -->
+      <div style="position:sticky;top:0;background:var(--surface);padding-bottom:12px;z-index:1;">
+        <div style="display:flex;gap:8px;">
+          <input id="followup-search-input" type="text" placeholder="Customer name or phone number…"
+            style="flex:1;padding:10px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;outline:none;"
+            oninput="debounceFollowupSearch(this.value)"
+          />
+          <button onclick="runFollowupSearch(document.getElementById('followup-search-input').value)"
+            style="padding:10px 16px;border-radius:10px;background:var(--accent);color:#fff;border:none;font-size:14px;cursor:pointer;font-weight:600;">
+            Search
+          </button>
+        </div>
+      </div>
+
+      <!-- Nearby sites section -->
+      <div id="followup-nearby-section" style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📍 Nearby Sites (within 500m)</div>
+        <div id="followup-nearby-list">
+          <div style="color:var(--text2);font-size:13px;padding:8px 0;">Detecting location…</div>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin-bottom:16px;"></div>
+
+      <!-- Search results section -->
+      <div id="followup-search-section">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">🔎 Search Results</div>
+        <div id="followup-search-results">
+          <div style="color:var(--text2);font-size:13px;padding:8px 0;">Type a name or phone to search…</div>
         </div>
       </div>
 
@@ -2818,7 +2874,12 @@ function resetVisitForm() {
   window._followupParentId = null;
   document.getElementById('followup-site-banner')?.remove();
   document.getElementById('nearby-visit-warning')?.remove();
+  // Show follow-up search bar again (hidden when follow-up active)
+  const fsBar = document.getElementById('followup-search-bar');
+  if (fsBar) fsBar.style.display = '';
   visitContacts = [];
+  // Revoke all Blob URLs before clearing to prevent memory leak
+  visitPhotos.forEach(p => { try { URL.revokeObjectURL(p.url); } catch(e) {} });
   visitPhotos = [];
   visitPinLat = null; visitPinLng = null;
   visitProjectType = null;
@@ -3100,6 +3161,9 @@ function handlePhotoCapture(id, input) {
 
 function removePhotoSlot(id) {
   document.getElementById(`photo-slot-${id}`)?.remove();
+  // Revoke Blob URL before removing from array to free memory
+  const removed = visitPhotos.find(p => p.slotId === id);
+  if (removed?.url) { try { URL.revokeObjectURL(removed.url); } catch(e) {} }
   visitPhotos = visitPhotos.filter(p => p.slotId !== id);
 }
 
@@ -3260,6 +3324,121 @@ async function checkNearbyVisits(lat, lng) {
   stepsEl.parentNode.insertBefore(warning, stepsEl);
 }
 
+// ─── Follow-up Search ─────────────────────────────────────────────────────────
+
+let _followupSearchTimer = null;
+
+function debounceFollowupSearch(val) {
+  clearTimeout(_followupSearchTimer);
+  _followupSearchTimer = setTimeout(() => runFollowupSearch(val), 400);
+}
+
+async function openFollowupSearch() {
+  // Hide the search bar button while modal is open
+  document.getElementById('sheet-followup-search').classList.add('active');
+
+  // Load nearby sites immediately
+  loadFollowupNearby();
+}
+
+async function loadFollowupNearby() {
+  const listEl = document.getElementById('followup-nearby-list');
+  listEl.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:8px 0;">Detecting location…</div>';
+
+  let lat, lng;
+  try {
+    const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {timeout:6000}));
+    lat = pos.coords.latitude; lng = pos.coords.longitude;
+  } catch(e) {
+    listEl.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:8px 0;">📍 Location unavailable — search by name above</div>';
+    return;
+  }
+
+  const since = new Date(Date.now() - 90*24*60*60*1000).toISOString();
+  const { data: recent } = await sb.from('field_visits')
+    .select('id,customer_name,site_address,construction_stage,created_at,ai_stage_detected,is_followup,site_lat,site_lng,visit_type')
+    .eq('staff_id', currentUser.id)
+    .gte('created_at', since)
+    .not('site_lat', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  if (!recent?.length) {
+    listEl.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:8px 0;">No nearby sites found</div>';
+    return;
+  }
+
+  // Haversine distance, show up to 500m
+  const withDist = recent.map(v => {
+    const R = 6371000;
+    const dLat = (v.site_lat - lat) * Math.PI/180;
+    const dLng = (v.site_lng - lng) * Math.PI/180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat*Math.PI/180)*Math.cos(v.site_lat*Math.PI/180)*Math.sin(dLng/2)**2;
+    const dist = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    return {...v, _dist: dist};
+  }).filter(v => v._dist <= 500).sort((a,b) => a._dist - b._dist);
+
+  if (!withDist.length) {
+    listEl.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:8px 0;">No sites within 500m of your current location</div>';
+    return;
+  }
+
+  listEl.innerHTML = withDist.map(v => renderFollowupCard(v, v._dist + 'm away')).join('');
+}
+
+async function runFollowupSearch(query) {
+  const q = (query||'').trim();
+  const resultsEl = document.getElementById('followup-search-results');
+  if (!q) {
+    resultsEl.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:8px 0;">Type a name or phone to search…</div>';
+    return;
+  }
+  resultsEl.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:8px 0;">Searching…</div>';
+
+  const { data } = await sb.from('field_visits')
+    .select('id,customer_name,site_address,construction_stage,created_at,ai_stage_detected,is_followup,visit_type')
+    .eq('staff_id', currentUser.id)
+    .or(`customer_name.ilike.%${q}%,site_address.ilike.%${q}%`)
+    .order('created_at', { ascending: false })
+    .limit(30);
+
+  if (!data?.length) {
+    resultsEl.innerHTML = `<div style="color:var(--text2);font-size:13px;padding:8px 0;">No results for "${q}"</div>`;
+    return;
+  }
+
+  resultsEl.innerHTML = data.map(v => renderFollowupCard(v, '')).join('');
+}
+
+function renderFollowupCard(v, distLabel) {
+  const dateStr = new Date(v.created_at).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'});
+  const stage = v.ai_stage_detected || v.construction_stage || '';
+  const name = v.customer_name || 'Unknown customer';
+  const addr = v.site_address || '';
+  const badge = v.is_followup ? '<span style="font-size:10px;background:rgba(124,58,237,.15);color:#7c3aed;border-radius:4px;padding:1px 5px;">Follow-up</span>' : '<span style="font-size:10px;background:rgba(16,185,129,.12);color:#059669;border-radius:4px;padding:1px 5px;">New</span>';
+  const distBadge = distLabel ? `<span style="font-size:10px;color:var(--text2);background:var(--surface-alt,var(--border));border-radius:4px;padding:1px 5px;">${distLabel}</span>` : '';
+  return `
+    <div onclick="selectFollowupSite(${v.id})" style="padding:12px 14px;border-radius:10px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:background .15s;" onmousedown="this.style.background='var(--surface-alt,rgba(0,0,0,.04))'" onmouseup="this.style.background=''">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+        <span style="font-size:14px;font-weight:700;color:var(--text);">${name}</span>
+        ${badge}${distBadge}
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:2px;">${addr}</div>
+      <div style="font-size:11px;color:var(--text2);display:flex;gap:8px;">
+        <span>${dateStr}</span>${stage ? `<span>· ${stage}</span>` : ''}
+      </div>
+    </div>`;
+}
+
+async function selectFollowupSite(visitId) {
+  closeSheet('sheet-followup-search');
+  document.getElementById('followup-search-input').value = '';
+  document.getElementById('followup-search-results').innerHTML = '<div style="color:var(--text2);font-size:13px;padding:8px 0;">Type a name or phone to search…</div>';
+  await markAsFollowUp(visitId);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function markAsFollowUp(parentVisitId) {
   window._followupParentId = parentVisitId;
 
@@ -3269,9 +3448,9 @@ async function markAsFollowUp(parentVisitId) {
     .select('id,parent_visit_id').eq('id', parentVisitId).single();
   const rootId = refVisit?.parent_visit_id || parentVisitId;
 
-  // Get all visits under this root (entire history)
+  // Get all visits under this root (entire history) — column-projected to avoid pulling heavy fields
   const { data: allVisits } = await sb.from('field_visits')
-    .select('*')
+    .select('id,created_at,customer_name,site_address,construction_stage,ai_stage_detected,project_type,room_count,plot_size,estimated_sqft,site_contacts,competitor_products,competitor_details,customer_requirements,site_lat,site_lng,parent_visit_id')
     .or(`id.eq.${rootId},parent_visit_id.eq.${rootId}`)
     .order('created_at', { ascending: false });
 
@@ -3347,9 +3526,11 @@ async function markAsFollowUp(parentVisitId) {
   // ── 8. Keep today's GPS (do NOT copy old lat/lng) ──
   // visitPinLat/Lng is already set to current GPS from location detection
 
-  // ── 9. Remove warning ──
+  // ── 9. Remove warning, hide search bar ──
   document.getElementById('nearby-visit-warning')?.remove();
   document.getElementById('followup-site-banner')?.remove();
+  const fsBar = document.getElementById('followup-search-bar');
+  if (fsBar) fsBar.style.display = 'none'; // hide once follow-up is set
 
   // ── 10. Show follow-up banner with history summary ──
   const lastDate = parent.created_at ? new Date(parent.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
@@ -5655,8 +5836,8 @@ function startRealtimeSync() {
       // Refresh whichever tab is active
       const activeTab = document.querySelector('.nav-item.active')?.dataset?.tab;
       if (activeTab === 'home' || activeTab === 'visits' || !activeTab) {
-        loadHomeStats();
-        if (activeTab === 'visits') loadVisitsList();
+        loadTodayData(); // was incorrectly called loadHomeStats — caused crash on every DB change
+        // loadVisitsList is not implemented; visits tab refreshes on next open
       }
       showSyncDot();
     })
@@ -5669,7 +5850,7 @@ function startRealtimeSync() {
       filter: `assigned_to_staff_id=eq.${currentUser.id}`
     }, (payload) => {
       console.log('[Realtime] assignment change:', payload.eventType);
-      loadHomeStats();
+      loadTodayData();
       const activeTab = document.querySelector('.nav-item.active')?.dataset?.tab;
       if (activeTab === 'team') loadTeamData();
       showSyncDot();
