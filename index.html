@@ -2814,6 +2814,10 @@ function openNewVisitSheet() {
 }
 
 function resetVisitForm() {
+  // Clear follow-up state
+  window._followupParentId = null;
+  document.getElementById('followup-site-banner')?.remove();
+  document.getElementById('nearby-visit-warning')?.remove();
   visitContacts = [];
   visitPhotos = [];
   visitPinLat = null; visitPinLng = null;
@@ -3257,35 +3261,124 @@ async function checkNearbyVisits(lat, lng) {
 }
 
 async function markAsFollowUp(parentVisitId) {
-  // Auto-fill form as follow-up linked to parent visit
   window._followupParentId = parentVisitId;
 
-  // Get parent visit details
-  const { data: parent } = await sb.from('field_visits')
-    .select('*').eq('id', parentVisitId).single();
+  // Fetch ALL visits for this site to consolidate contacts and latest data
+  // First get the root visit id
+  const { data: refVisit } = await sb.from('field_visits')
+    .select('id,parent_visit_id').eq('id', parentVisitId).single();
+  const rootId = refVisit?.parent_visit_id || parentVisitId;
 
-  if (parent) {
-    // Pre-fill known data from previous visit
-    if (parent.site_lat) { visitPinLat = parent.site_lat; visitPinLng = parent.site_lng; }
-    const addrEl = document.getElementById('visit-address');
-    if (addrEl && parent.site_address) addrEl.value = parent.site_address;
-    const stageEl = document.getElementById('visit-stage');
-    if (stageEl && parent.construction_stage) stageEl.value = parent.construction_stage;
+  // Get all visits under this root (entire history)
+  const { data: allVisits } = await sb.from('field_visits')
+    .select('*')
+    .or(`id.eq.${rootId},parent_visit_id.eq.${rootId}`)
+    .order('created_at', { ascending: false });
+
+  const parent = allVisits?.[0]; // most recent visit = latest data
+  const firstVisit = allVisits?.[allVisits.length - 1]; // original
+
+  if (!parent) { showToast('Could not load site data'); return; }
+
+  // ── 1. Site name & address ──
+  const siteNameEl = document.getElementById('vs-site-name');
+  if (siteNameEl) {
+    // Use customer_name if available, else extract from address
+    const name = parent.customer_name || firstVisit?.customer_name ||
+      (parent.site_address?.includes('—') ? parent.site_address.split('—')[0].trim() : '');
+    if (name) siteNameEl.value = name;
   }
 
-  // Remove warning, mark as follow-up
+  // ── 2. Stage ──
+  const stageEl = document.getElementById('vs-stage');
+  const latestStage = parent.ai_stage_detected || parent.construction_stage;
+  if (stageEl && latestStage) stageEl.value = latestStage;
+
+  // ── 3. Project type chip ──
+  const projType = parent.project_type || firstVisit?.project_type;
+  if (projType) {
+    visitProjectType = projType;
+    document.querySelectorAll('#project-type-chips .chip').forEach(c => {
+      c.classList.toggle('selected', c.dataset.val === projType);
+    });
+  }
+
+  // ── 4. Room counts ──
+  const rc = parent.room_count || firstVisit?.room_count || {};
+  if (rc.beds != null) { roomCounts.beds = rc.beds; document.getElementById('room-beds').textContent = rc.beds; }
+  if (rc.baths != null) { roomCounts.baths = rc.baths; document.getElementById('room-baths').textContent = rc.baths; }
+  if (rc.floors != null) { roomCounts.floors = rc.floors; document.getElementById('room-floors').textContent = rc.floors; }
+  const plotSrc = parent.plot_size || firstVisit?.plot_size;
+  if (plotSrc) { const plotEl = document.getElementById('room-plot'); if (plotEl) plotEl.value = plotSrc; }
+  const sqftSrc = parent.estimated_sqft || firstVisit?.estimated_sqft;
+  if (sqftSrc) { const sqftEl = document.getElementById('vs-sqft'); if (sqftEl) sqftEl.value = sqftSrc; }
+
+  // ── 5. Merge & deduplicate contacts across ALL visits ──
+  const phoneMap = new Map(); // phone → contact obj
+  for (const v of (allVisits || []).slice().reverse()) { // oldest first so newest wins
+    for (const c of (v.site_contacts || [])) {
+      const key = (c.phone || '').replace(/\D/g,'') || (c.name || '').toLowerCase();
+      if (!key) continue;
+      phoneMap.set(key, { ...c, id: Date.now() + Math.random() });
+    }
+  }
+  visitContacts = [...phoneMap.values()].map((c, i) => ({ ...c, id: Date.now() + i }));
+  renderContactsList();
+
+  // ── 6. Competitors ──
+  const compSrc = parent.competitor_products?.length ? parent.competitor_products :
+    parent.competitor_details?.length ? parent.competitor_details :
+    firstVisit?.competitor_products || [];
+  if (compSrc.length) {
+    competitorEntries = compSrc.map(x => typeof x === 'string' ? x : (x.brand || x.name || '')).filter(Boolean);
+    renderCompetitorList();
+  }
+
+  // ── 7. Customer requirements chips ──
+  const reqSrc = parent.customer_requirements?.length ? parent.customer_requirements :
+    firstVisit?.customer_requirements || [];
+  if (reqSrc.length) {
+    customerRequirements = reqSrc;
+    document.querySelectorAll('#customer-req-chips .chip').forEach(c => {
+      c.classList.toggle('selected', reqSrc.includes(c.dataset.req));
+    });
+  }
+
+  // ── 8. Keep today's GPS (do NOT copy old lat/lng) ──
+  // visitPinLat/Lng is already set to current GPS from location detection
+
+  // ── 9. Remove warning ──
   document.getElementById('nearby-visit-warning')?.remove();
+  document.getElementById('followup-site-banner')?.remove();
 
-  // Show follow-up indicator
-  const indicator = document.createElement('div');
-  indicator.style.cssText = 'margin-bottom:12px;padding:10px 14px;background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.3);border-radius:10px;font-size:13px;font-weight:600;color:#A78BFA;';
-  indicator.innerHTML = `🔄 Logging as follow-up to visit #${parentVisitId}`;
+  // ── 10. Show follow-up banner with history summary ──
+  const lastDate = parent.created_at ? new Date(parent.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
+  const stageLabel = latestStage ? latestStage.replace(/_/g,' ') : '—';
+  const visitCount = allVisits?.length || 1;
+  const contactSummary = visitContacts.length ? `${visitContacts.length} contact${visitContacts.length>1?'s':''} loaded` : 'No contacts yet';
+  const banner = document.createElement('div');
+  banner.id = 'followup-site-banner';
+  banner.style.cssText = 'margin-bottom:14px;padding:12px 14px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.35);border-radius:10px;';
+  banner.innerHTML = `
+    <div style="font-size:12px;font-weight:700;color:#A78BFA;letter-spacing:.04em;margin-bottom:6px;">🔄 FOLLOW-UP · EXISTING SITE</div>
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">${parent.customer_name || parent.site_address?.split('—')[0]?.trim() || 'Site Visit'}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text2);">
+      <span>📅 Last visit: <strong>${lastDate}</strong></span>
+      <span>🏗️ Stage: <strong style="text-transform:capitalize;">${stageLabel}</strong></span>
+      <span>🔢 Visit #${visitCount + 1}</span>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:5px;">✓ Site details pre-filled &nbsp;·&nbsp; ${contactSummary} &nbsp;·&nbsp; Today's GPS captured fresh</div>
+  `;
   const stepsEl = document.getElementById('visit-steps');
-  if (stepsEl) stepsEl.parentNode.insertBefore(indicator, stepsEl);
+  if (stepsEl) stepsEl.parentNode.insertBefore(banner, stepsEl);
 
-  showToast('Marked as follow-up — previous visit data pre-filled');
+  // Update sheet title
+  document.getElementById('visit-sheet-title').textContent = '🔄 Follow-up Visit';
+
+  showToast(`Follow-up loaded — ${visitContacts.length} contacts & site details pre-filled`);
 }
 window.markAsFollowUp = markAsFollowUp;
+
 
 // ── Submit visit ──
 // ── Territory check ──
@@ -3560,11 +3653,16 @@ async function submitVisit(forceSubmit = false, crossTerritoryReason = null) {
       next_action_date: document.getElementById('vs-followup')?.value || null,
       next_action: 'follow_up',
       designation_at_visit: desig,
-      visit_type: desig.toLowerCase().includes('mapping') ? 'mapping' : desig.toLowerCase().includes('team leader') ? 'tl' : 'field_exec',
+      // visit_type set below with follow-up awareness
       visit_quality_score: score,
       quality_breakdown: checks,
       cross_territory: !!crossTerritoryReason,
-      cross_territory_reason: crossTerritoryReason || null
+      cross_territory_reason: crossTerritoryReason || null,
+      // Follow-up linkage — set when markAsFollowUp was called
+      is_followup: !!window._followupParentId,
+      parent_visit_id: window._followupParentId || null,
+      visit_type: window._followupParentId ? 'follow_up' :
+        (desig.toLowerCase().includes('mapping') ? 'mapping' : desig.toLowerCase().includes('team leader') ? 'tl' : 'field_exec'),
     };
 
     const { data: visit, error } = await sb.from('field_visits').insert(visitData).select('id').single();
